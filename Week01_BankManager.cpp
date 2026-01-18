@@ -1,3 +1,9 @@
+/*
+* Week 1 Assignment - Bank Manager
+* By: Eldon Salman
+* Date: Janaury 18th 2026
+*/
+
 #include <iostream> // For Strings
 #include <iomanip> // SetW & Formatting
 #include <cmath> // Rounding
@@ -102,10 +108,10 @@ public:
                 }
 
                 // It also may not be negative or equal to 0, you need to start with something in there
-                // Most banks have minimums (0 to 5 dollars), for this instance you need 1 Dollar
-                if (accounts[accountCount].savingsAccountBalance <= 1) {
+                // Most banks have minimums (0 to 5 dollars), for this instance no minimum is required
+                if (accounts[accountCount].savingsAccountBalance <= 0) {
                     error = true;
-                    cout << "! Error: The Balance may not be equal to or less than $1.00 Dollar !\n";
+                    cout << "! Error: The Balance may not be equal to or less than $0.00 !\n";
                 }
             }
         }
@@ -140,7 +146,7 @@ public:
                     << setw(20) << accounts[i].savingsAccountBalance
                     << endl;
                 cout << right << setfill(' ');
-                bool found = true;
+                found = true;
             }
         }
 
