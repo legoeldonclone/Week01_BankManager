@@ -125,6 +125,9 @@
   <ItemGroup>
     <ClCompile Include="Week01_BankManager.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="doctest.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

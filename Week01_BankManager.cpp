@@ -1,7 +1,7 @@
 /*
-* Week 1 Assignment - Bank Manager
+* Week 2 Assignment - Bank Manager
 * By: Eldon Salman
-* Date: Janaury 18th 2026
+* Date: January 25th 2026
 */
 
 #include <iostream> // For Strings
@@ -122,8 +122,10 @@ public:
     }
 
     void viewAccount(int accountNum) {
-        // Account display
-        bool found = false;
+        // Searches for the Index
+        int index = searchAccount(accountNum);
+
+        // Sets up the actual view format for accounts
         cout << "\n==================================================\n";
         cout << setw(28) << "Account\n";
         cout << "==================================================\n";
@@ -136,25 +138,36 @@ public:
         cout << setfill('-') << setw(50) << "-" << endl;
         cout << setfill(' ');
 
-        // Go through the accounts, find the same account number and display it's information
-        for (int i = 0; i < accountCount; i++) {
-            if (accountNum == accounts[i].accountNumber) {
-                cout << left
-                    << setw(20) << accounts[i].accountNumber
-                    << setw(20) << accounts[i].memberName
-                    << "$" << fixed << setprecision(2)
-                    << setw(20) << accounts[i].savingsAccountBalance
-                    << endl;
-                cout << right << setfill(' ');
-                found = true;
-            }
-        }
-
-        // If it's not found, output such
-        if (!found) {
+        // If there is a -1 then there is no account
+        if (index == -1) {
             cout << "! There was no account that was found !\n";
             cout << right << setfill(' ');
+            return;
         }
+
+        // Else it will output the actual index
+        cout << left
+            << setw(20) << accounts[index].accountNumber
+            << setw(20) << accounts[index].memberName
+            << "$" << fixed << setprecision(2)
+            << setw(20) << accounts[index].savingsAccountBalance
+            << endl;
+
+        cout << right << setfill(' ');
+    }
+
+
+    int searchAccount(int accountNum) {
+        // Account is searched for, once found it is indexxed to be used for the transaction
+        int index = -1;
+        for (int i = 0; i < accountCount; i++) {
+            if (accounts[i].accountNumber == accountNum) {
+                index = i;
+                break;
+            }
+        }
+        // Returns what the actual array index is
+        return index;
     }
 
     // Enumeration for Deposit/Withdraws
@@ -167,13 +180,7 @@ public:
         cin >> accountNum;
 
         // Account is searched for, once found it is indexxed to be used for the transaction
-        int index = -1;
-        for (int i = 0; i < accountCount; i++) {
-            if (accounts[i].accountNumber == accountNum) {
-                index = i;
-                break;
-            }
-        }
+        int index = searchAccount(accountNum);
 
         // Transaction cancels if Index is not found
         if (index == -1) {
@@ -209,25 +216,51 @@ public:
             return;
         }
 
-        // Adds the ammount to the account as a Deposit
+        bool success = false;
         if (type == Deposit) {
-            accounts[index].savingsAccountBalance += amount;
-            cout << "Deposited $" << fixed << setprecision(2) << amount << " to account #" << accounts[index].accountNumber << ".\n";
+            success = deposit(accountNum, amount);
+            if (success)
+                cout << "Deposited $" << fixed << setprecision(2) << amount << " to account #" << accounts[index].accountNumber << ".\n";
+            else
+                cout << "Deposit failed.\n";
         }
         else if (type == Withdraw) {
-            if (amount > accounts[index].savingsAccountBalance) {
-                // We can not overdraw funds at this bank, thus a Withdrawal can not occur
-                cout << "Insufficient funds for withdrawal.\n";
-            }
-            else {
-                // Withdrawal goes through and 
-                accounts[index].savingsAccountBalance -= amount;
+            success = withdraw(accountNum, amount);
+            if (success)
                 cout << "Withdrew $" << fixed << setprecision(2) << amount << " from account #" << accounts[index].accountNumber << ".\n";
-            }
+            else
+                cout << "Insufficient funds or invalid withdrawal.\n";
         }
         // Show the account after the actual transaction, even if it 'cancels'
         viewAccount(accountNum);
     }
+
+    // Deposit directly for testing
+    bool deposit(int accountNum, double amount) {
+        int index = searchAccount(accountNum); // Search for the actual account
+        if (index == -1 || amount <= 0) {
+            return false; // No account found or the amount is less than 0
+        }
+        // Deposit if it's clear
+        accounts[index].savingsAccountBalance += round(amount * 100.0) / 100.0;
+        return true;
+    }
+
+    // Withdraw directly for testing
+    bool withdraw(int accountNum, double amount) {
+        int index = searchAccount(accountNum); // Search for the actual account
+        if (index == -1 || amount <= 0) return false;
+
+        // Can't overdraw the account
+        if (amount > accounts[index].savingsAccountBalance) {
+            return false;
+        }
+
+        // Rounds the amount
+        accounts[index].savingsAccountBalance -= round(amount * 100.0) / 100.0;
+        return true;
+    }
+
 
     // Saving the actual accounts all to a file for a report
     void saveReport(const string& filename) {
@@ -255,9 +288,88 @@ public:
         report.close();
         cout << "Report saved successfully to \"" << filename << "\".\n";
     }
+
+    // The Most direct way to add an account, this will only be utilized for testing in #DEBUG
+    bool addAccountTest(int accountNumber, const string& memberName, double balance) {
+        if (accountCount >= max) {
+            return false;  // No going over the max
+        }
+        if (balance <= 0) {
+            return false; // No balance can be equal to or less than 0
+        }
+
+        // All we're doing is setting everything here
+        accounts[accountCount].accountNumber = accountNumber;
+        accounts[accountCount].memberName = memberName;
+        accounts[accountCount].savingsAccountBalance = balance;
+        accountCount++;
+        return true;
+    }
+
+    // Public getter for testing
+    int getAccountCount() const {
+        return accountCount;
+    }
+
+    // SIMPLIFIED TESTING TRANSACTION, this is just to test my enumeration
+    bool doTransaction(int accountNum, TransactionType type, double amount) {
+        int index = searchAccount(accountNum); // Search accounts
+        if (index == -1) return false; // If there is no account found then it fails
+
+        if (amount <= 0) return false; // If there is a negative balance it fails
+
+        if (type == Deposit) {
+            accounts[index].savingsAccountBalance += amount;
+            return true;
+        }
+        else if (type == Withdraw) {
+            if (amount > accounts[index].savingsAccountBalance) return false;
+            accounts[index].savingsAccountBalance -= amount;
+            return true;
+        }
+        return false; // fallback (shouldn't happen)
+    }
+
+
 };
 
+#ifdef _DEBUG
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 
+// TEST CLASS METHODS: searchAccount & addAccountTest
+TEST_CASE("Testing for Week 2") {
+    Bank b;
+
+    // Normal addAccountTest - Test 1
+    CHECK(b.addAccountTest(10, "Alice", 100.0) == true); // Array Test 1
+    CHECK(b.getAccountCount() == 1); // Calculation Test 1
+    CHECK(b.searchAccount(10) == 0); // Calculation Test 2
+    CHECK(b.deposit(10, 50) == true); // Calculation Test 3
+
+    // Adding another account - Test 2
+    CHECK(b.addAccountTest(25, "Bob", 50.0) == true); // Array Test 2
+    CHECK(b.getAccountCount() == 2); // Calculation Test 4
+    CHECK(b.searchAccount(25) == 1); // Calculation Test 5
+    CHECK(b.withdraw(25, 25) == true); // Calculation test 6
+
+    CHECK(b.searchAccount(26) == -1); // Calculation Test 7
+
+    // Max Reached - Test 3
+    for (int i = 0; i < 997; i++) {
+        b.addAccountTest(100 + i, "Test", 1.0);
+    }
+    CHECK(b.addAccountTest(9999, "Overflow", 1.0) == false); // Array Test 3
+
+    // Enumeration tests 1-3 utilizing the doTransaction function for Deposits & Withdraws
+    CHECK(b.doTransaction(10, Bank::Deposit, 5) == true);
+    CHECK(b.doTransaction(25, Bank::Withdraw, 5) == true);
+    CHECK(b.doTransaction(10, Bank::Withdraw, 500) == false);
+}
+#endif
+
+
+#ifndef _DEBUG
 int main()
 {
     // Declaring our 4 main inputs, choice for the menu, filename for the actual file, accountNum for the viewing accounts, bankManager to access the class
@@ -312,3 +424,4 @@ int main()
     // Exit Program
     cout << "Exiting program...\n";
 }
+#endif
