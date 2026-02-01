@@ -1,0 +1,30 @@
+name: Banking Workflow Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build and run tests
+        shell: cmd
+        run: |
+          REM Compile Week01_BankManager.cpp in TEST MODE (_DEBUG defined)
+          REM /EHsc = standard C++ exception handling
+          REM /std:c++17 = C++17 standard
+
+          cl /nologo /EHsc /std:c++17 /D _DEBUG Week01_BankManager.cpp /Fe:tests.exe
+
+      - name: Run tests
+        shell: cmd
+        run: |
+          tests.exe
