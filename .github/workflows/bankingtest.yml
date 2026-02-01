@@ -19,8 +19,8 @@ jobs:
         shell: cmd
         run: |
           REM Compile Week01_BankManager.cpp in TEST MODE (_DEBUG defined)
-          REM /EHsc
-          REM /std:c++17
+          REM /EHsc = standard C++ exception handling
+          REM /std:c++17 = C++17 standard (adjust if your class requires a different standard)
 
           cl /nologo /EHsc /std:c++17 /D _DEBUG Week01_BankManager.cpp /Fe:tests.exe
 
