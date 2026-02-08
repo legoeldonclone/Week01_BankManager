@@ -1,33 +1,278 @@
 /*
-* Week 2 Assignment - Bank Manager
+* Week 4 Assignment - Bank Manager with Inheritance
 * By: Eldon Salman
-* Date: January 25th 2026
+* Date: February 8th 2026
 */
 
-#include <iostream> // For Strings
-#include <iomanip> // SetW & Formatting
-#include <cmath> // Rounding
-#include <fstream> // File output
-#include <string> // Getline
+// All of the needed libraries
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <fstream>
+#include <string>
 using namespace std;
 
-// Bank Account will always have 3 of the following
-struct BankAccount {
+
+
+
+
+
+// My Composition class, just keeps track of transactions but more may be added soon
+class TransactionHistory {
+private:
+    int totalTransactions;
+    double totalDeposited;
+    double totalWithdrawn;
+
+public:
+    // Constructors
+    TransactionHistory() {
+        totalTransactions = 0;
+        totalDeposited = 0.0;
+        totalWithdrawn = 0.0;
+    }
+    TransactionHistory(int trans, double deposited, double withdrawn) {
+        totalTransactions = trans;
+        totalDeposited = deposited;
+        totalWithdrawn = withdrawn;
+    }
+
+    // Getters
+    int getTotalTransactions() const {
+        return totalTransactions;
+    }
+    double getTotalDeposited() const {
+        return totalDeposited;
+    }
+    double getTotalWithdrawn() const {
+        return totalWithdrawn;
+    }
+
+	// Helper methods, record deposit and withdrawal, this will be used in the actual transaction functions to keep track of the history
+    void recordDeposit(double amount) {
+        totalDeposited += amount;
+        totalTransactions++;
+    }
+    void recordWithdrawal(double amount) {
+        totalWithdrawn += amount;
+        totalTransactions++;
+    }
+};
+
+
+
+// Base Account class, parent of Savings + Checking
+class Account {
+protected:
     int accountNumber;
     string memberName;
-    double savingsAccountBalance;
+    double balance;
+
+public:
+    // Enum for account type
+    enum AccountType { Savings = 1, Checking = 2 };
+
+    // Constructors
+    Account() {
+        accountNumber = 0;
+        memberName = "Unnamed";
+        balance = 0.0;
+    }
+    Account(int accNum, const string& name, double bal) {
+        accountNumber = accNum;
+        memberName = name;
+        balance = bal;
+    }
+
+    // Getters
+    int getAccountNumber() const {
+        return accountNumber;
+    }
+    string getMemberName() const {
+        return memberName;
+    }
+    double getBalance() const {
+        return balance;
+    }
+
+    // Setters
+    void setAccountNumber(int accNum) {
+        accountNumber = accNum;
+    }
+    // No use, utilize if account changing in future
+    void setMemberName(const string& name) {
+        memberName = name;
+    }
+    void setBalance(double bal) {
+        balance = bal;
+    }
+
+	// Virtual print function to be called by derived classes, this will print the common account info and then the derived classes will add their own info
+    virtual void print() const {
+        cout << left << setw(20) << accountNumber
+            << setw(20) << memberName
+            << "$" << fixed << setprecision(2) << setw(20) << balance
+            << endl;
+    }
+
+    // Virtual method to record transactions
+    virtual void recordTransaction(bool isDeposit, double amount) {
+        // Base class does nothing - derived classes override
+    }
 };
+
+
+
+// Derived class, Savings adds interest which will be manipulated later on to add interest over time
+class SavingsAccount : public Account {
+private:
+    double interestRate;
+    TransactionHistory history;
+
+public:
+    // Constructors
+    SavingsAccount() {
+        interestRate = 0.0;
+    }
+    SavingsAccount(int accNum, const string& name, double bal, double rate) : Account(accNum, name, bal) {
+        interestRate = rate;
+    }
+
+    // Getters
+    double getInterestRate() const {
+        return interestRate;
+    }
+    TransactionHistory& getHistory() {
+        return history;
+    }
+    const TransactionHistory& getHistory() const {
+        return history;
+    }
+
+    // Setters
+    void setInterestRate(double rate) {
+        interestRate = rate;
+    }
+
+    // Override print
+    void print() const override {
+        // Call base print first
+        Account::print();
+        cout << endl;
+        // Add savings-specific info
+        cout << left << setw(20) << "Account Type:"
+            << "Savings" << endl;
+        cout << setw(20) << "Interest Rate:"
+            << fixed << setprecision(2) << interestRate * 100 << "%" << endl;
+        // Add transaction history
+        cout << setw(20) << "Total Transactions:"
+            << history.getTotalTransactions() << endl;
+        cout << setw(20) << "Total Deposited:"
+            << "$" << fixed << setprecision(2) << history.getTotalDeposited() << endl;
+        cout << setw(20) << "Total Withdrawn:"
+            << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
+    }
+
+    // To be used later on, no utilization now but more in the future
+    double calculateInterest() const {
+        return balance * interestRate;
+    }
+
+    // Record transaction in history
+    void recordTransaction(bool isDeposit, double amount) override {
+        if (isDeposit)
+            history.recordDeposit(amount);
+        else
+            history.recordWithdrawal(amount);
+    }
+};
+
+
+
+
+
+
+// Checking account Derived class, adds a monthly fee that will be manipulated later on
+class CheckingAccount : public Account {
+private:
+    double monthlyFee;
+    TransactionHistory history;
+
+public:
+    // Constructors
+    CheckingAccount() {
+        monthlyFee = 0.0;
+    }
+    CheckingAccount(int accNum, const string& name, double bal, double fee) : Account(accNum, name, bal) {
+        monthlyFee = fee;
+    }
+
+    // Getters
+    double getMonthlyFee() const {
+        return monthlyFee;
+    }
+    TransactionHistory& getHistory() {
+        return history;
+    }
+    const TransactionHistory& getHistory() const {
+        return history;
+    }
+
+    // Setters
+    void setMonthlyFee(double fee) {
+        monthlyFee = fee;
+    }
+
+    // Override print
+    void print() const override {
+        // Call base print first
+        Account::print();
+        cout << endl;
+        // Add checking-specific info
+        cout << left << setw(20) << "Account Type:"
+            << "Checking" << endl;
+        cout << setw(20) << "Monthly Fee:"
+            << "$" << fixed << setprecision(2) << monthlyFee << endl;
+        // Add transaction history
+        cout << setw(20) << "Total Transactions:"
+            << history.getTotalTransactions() << endl;
+        cout << setw(20) << "Total Deposited:"
+            << "$" << fixed << setprecision(2) << history.getTotalDeposited() << endl;
+        cout << setw(20) << "Total Withdrawn:"
+            << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
+    }
+
+    // Helper method
+    void applyMonthlyFee() {
+        balance -= monthlyFee;
+    }
+
+    // Record transaction in history
+    void recordTransaction(bool isDeposit, double amount) override {
+        if (isDeposit)
+            history.recordDeposit(amount);
+        else
+            history.recordWithdrawal(amount);
+    }
+};
+
+
+
+
+
 
 // Class Bank encapsulates the actual functions of the program
 class Bank {
-    // You can't Manipulate the actual account, you need to access it through the functions
 private:
-    const static int max = 999;
+    // You can't Manipulate the actual account, you need to access it through the functions
+    static const int max = 999;
     // 999 Is chosen as the 'max' but hypothetically we could place it at an extremely high number if we wanted to do so
-    BankAccount accounts[max];
+    Account* accounts[max];
     int accountCount = 0;
+
     // All functions are public for Bank Manager usage
 public:
+
     // Displays the menu every time, foundational for the program
     void displayMenu() {
         cout << "\n==================================================\n";
@@ -43,82 +288,102 @@ public:
 
     // We're just adding a new account to the list, the maximum being 999 Accounts
     void addAccount() {
-        bool error = true;
-
-        // If the account is equal to 999, then it won't allow you to add a new account
+		// Returns if going over the max amount of accounts
         if (accountCount >= max) {
             cout << "Cannot add more accounts. Maximum reached.\n";
             return;
         }
-        else { // Else the program will continue to the actual inputs
-            while (error) {
-                // We are checking for 'Error', we assume there is none at the start and merely ask for a normal account#
-                error = false;
-                cout << "Enter account number: ";
-                cin >> accounts[accountCount].accountNumber;
 
-                // BUT, if there IS an Error it will clear out the line, output an Error Message, and also redo the whole thing
-                if (cin.fail()) {
-                    cin.clear();
-                    cin.ignore(10000, '\n');
-                    cout << "! Error: You can not use Alphabetic or Special Characters in an account number !\n";
+        // Initializes holders and Error which will be utilized to stop bad inputs
+        int accNum;
+        string name;
+        double bal;
+        int typeChoice;
+        bool error = true;
+
+        while (error) {
+            // We are checking for 'Error', we assume there is none at the start and merely ask for a normal account#
+            error = false;
+            cout << "\nEnter account number: ";
+            cin >> accNum;
+
+            // BUT, if there IS an Error it will clear out the line, output an Error Message, and also redo the whole thing
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "! Error: You can not use Alphabetic or Special Characters in an account number !\n";
+                error = true;
+            }
+
+            for (int i = 0; i < accountCount; i++) {
+                // Search for if the account they entered was the same as one of our other accounts
+                if (accNum == accounts[i]->getAccountNumber()) {
                     error = true;
-                    continue;
-                }
-
-                for (int i = 0; i < accountCount; i++) {
-                    // Search for if the account they entered was the same as one of our other accounts
-                    if (accounts[accountCount].accountNumber == accounts[i].accountNumber) {
-                        error = true;
-                        cout << "! Error: There was a duplicate account number found !\n";
-                    }
-                }
-
-                // Your account number may not be 0 or Negative as well
-                if (accounts[accountCount].accountNumber <= 0) {
-                    error = true;
-                    cout << "! Error: Account can not be negative or 0 !\n";
+                    cout << "! Error: There was a duplicate account number found !\n";
                 }
             }
 
-            error = true;
-            // Clears the line to allow for an input of a name
-            cin.ignore(10000, '\n');
-            cout << "\nEnter Member Name: ";
-            // Get Line to allow spaces in names
-            getline(cin, accounts[accountCount].memberName);
-
-
-            while (error) {
-                // We are checking for 'Error', we assume there is none at the start and ask the user for Dollars & Cents)
-                error = false;
-                cout << "\nEnter Savings Balance ($##.##): ";
-                cin >> accounts[accountCount].savingsAccountBalance;
-
-                // VERY COMPLICATED LOOKING! But all it does is round it to the nearest dollar via: First making it whole numbers, then rounding it to the nearest dollar, then turn it back into cents
-                accounts[accountCount].savingsAccountBalance = round(accounts[accountCount].savingsAccountBalance * 100.0) / 100.0;
-
-                // Again, if another failure happens we restart the question to get a proper number)
-                if (cin.fail()) {
-                    cin.clear();
-                    cin.ignore(10000, '\n');
-                    cout << "! Error: You can not use Alphabetic or Special Characters for account balance !\n";
-                    error = true;
-                    continue;
-                }
-
-                // It also may not be negative or equal to 0, you need to start with something in there
-                // Most banks have minimums (0 to 5 dollars), for this instance no minimum is required
-                if (accounts[accountCount].savingsAccountBalance <= 0) {
-                    error = true;
-                    cout << "! Error: The Balance may not be equal to or less than $0.00 !\n";
-                }
+            // Your account number may not be 0 or Negative as well
+            if (accNum <= 0) {
+                error = true;
+                cout << "! Error: Account can not be negative or 0 !\n";
             }
         }
-        // Success, and our 'total' was increased in accountCount
+
+        error = true;
+        // Clears the line to allow for an input of a name
+        cin.ignore(10000, '\n');
+        cout << "\nEnter Member Name: ";
+        // Get Line to allow spaces in names
+        getline(cin, name);
+
+        while (error) {
+            // We are checking for 'Error', we assume there is none at the start and ask the user for Dollars & Cents)
+            error = false;
+            cout << "\nEnter Savings Balance ($##.##): ";
+            cin >> bal;
+
+            // Rounds it to the nearest dollar via: Making it whole numbers, rounding it to the nearest dollar, turn it back into cents
+            bal = round(bal * 100.0) / 100.0;
+
+            // If another failure happens we restart the question to get a proper number
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "! Error: You can not use Alphabetic or Special Characters for account balance !\n";
+                error = true;
+                continue;
+            }
+
+            // It also may not be negative or equal to 0, you need to start with something in there
+            // Most banks have minimums (0 to 5 dollars), for this instance no minimum is required
+            if (bal <= 0) {
+                error = true;
+                cout << "! Error: The Balance may not be equal to or less than $0.00 !\n";
+            }
+        }
+
+        cout << "\nSelect account type (1 for Savings, 2 for Checking): ";
+        cin >> typeChoice;
+        if (cin.fail() || (typeChoice != 1 && typeChoice != 2)) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "! Error: Invalid account type choice !\n";
+            return;
+        }
+
+        Account* newAccount = nullptr;
+        if (typeChoice == 1) {
+            double interestRate = 0.05; // Example interest rate
+            newAccount = new SavingsAccount(accNum, name, bal, interestRate);
+        }
+        else {
+            double monthlyFee = 10.0; // Example monthly fee
+            newAccount = new CheckingAccount(accNum, name, bal, monthlyFee);
+        }
+
+        accounts[accountCount++] = newAccount;
         cout << "Account added successfully!\n";
-        accountCount += 1;
-        return;
     }
 
     void viewAccount(int accountNum) {
@@ -145,23 +410,18 @@ public:
             return;
         }
 
-        // Else it will output the actual index
-        cout << left
-            << setw(20) << accounts[index].accountNumber
-            << setw(20) << accounts[index].memberName
-            << "$" << fixed << setprecision(2)
-            << setw(20) << accounts[index].savingsAccountBalance
-            << endl;
+        // Else it will output the actual index using the virtual print function
+        accounts[index]->print();
 
         cout << right << setfill(' ');
     }
 
 
     int searchAccount(int accountNum) {
-        // Account is searched for, once found it is indexxed to be used for the transaction
+        // Account is searched for, once found it is indexed to be used for the transaction
         int index = -1;
         for (int i = 0; i < accountCount; i++) {
-            if (accounts[i].accountNumber == accountNum) {
+            if (accounts[i]->getAccountNumber() == accountNum) {
                 index = i;
                 break;
             }
@@ -170,102 +430,102 @@ public:
         return index;
     }
 
-    // Enumeration for Deposit/Withdraws
-    enum TransactionType { Deposit = 1, Withdraw = 2 };
 
     void transaction() {
-        // Account Number is needed for it to occur
+		// Initializes needed varriables including Error again to stop bad inputs, and index to find the account
         int accountNum;
-        cout << "Enter the account number for this transaction: ";
-        cin >> accountNum;
-
-        // Account is searched for, once found it is indexxed to be used for the transaction
-        int index = searchAccount(accountNum);
-
-        // Transaction cancels if Index is not found
-        if (index == -1) {
-            cout << "Transaction failed: Account does not exist.\n";
-            return;
-        }
-
-        // Transaction has to choose 1 or 2 for Deposit or Withdraw
         int choice;
-        cout << "Select transaction type: Deposit (1) or Withdraw (2): ";
-        cin >> choice;
-
-        // If it's neither it cancels out
-        TransactionType type;
-        if (choice == 1) type = Deposit;
-        else if (choice == 2) type = Withdraw;
-        else {
-            cout << "Invalid transaction type.\n";
-            return;
-        }
-
-        // Ammount is entered and rounded to the nearest cent
         double amount;
-        cout << "Enter the amount: ";
-        cin >> amount;
-        amount = round(amount * 100) / 100;
+        bool error = true;
+        int index;
 
-        // Will not work if it's not a valid number
-        if (cin.fail() || amount <= 0) {
-            cin.clear();
-            cin.ignore(10000, '\n');
-            cout << "Invalid amount.\n";
+        
+        while (error) {
+            error = false;
+            cout << "\nEnter Account Number: ";
+            cin >> accountNum;
+
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "! Error: You can not use Alphabetic or Special Characters in an account number !\n";
+                error = true;
+                continue;
+            }
+			// Searches for the account number to see if it exists, if it doesn't it will output an error and return to the menu
+            index = searchAccount(accountNum);
+            if (index == -1) {
+                error = true;
+                cout << "! Error: No account found with that number, you may try again later !\n";
+                return;
+            }
+
+        }
+
+        // Looking for transaction type, this is their chance to get out if they don't want to do the transaction
+        error = true;
+        while (error) {
+            error = false;
+            cout << "\nSelect transaction type (1 for Deposit, 2 for Withdraw, 3 for Exit): ";
+            cin >> choice;
+            if (cin.fail() || (choice != 1 && choice != 2 && choice != 3)) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "! Error: Invalid transaction type choice !\n";
+                error = true;
+            }
+        }
+        if (choice == 3)
+        {
             return;
         }
 
+		// They could also input 0 or negative amounts, and we don't want that, so we will check for that as well as for bad inputs
+        error = true;
+        while (error) {
+            error = false;
+            cout << "\nEnter amount ($##.##): ";
+            cin >> amount;
+
+            // Rounds it to the nearest dollar via: Making it whole numbers, rounding it to the nearest dollar, turn it back into cents
+            amount = round(amount * 100.0) / 100.0;
+
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "! Error: You can not use Alphabetic or Special Characters for amount !\n";
+                error = true;
+            }
+
+            if (amount <= 0) {
+                error = true;
+                cout << "! Error: The Amount may not be equal to or less than $0.00 !\n";
+            }
+        }
+
+		// Call deposit or withdrawl and record it in the transaction history, then show the account after the transaction, even if it fails, to show the user what happened
         bool success = false;
-        if (type == Deposit) {
+        if (choice == 1) {
             success = deposit(accountNum, amount);
             if (success)
-                cout << "Deposited $" << fixed << setprecision(2) << amount << " to account #" << accounts[index].accountNumber << ".\n";
+                cout << "\nDeposited $" << fixed << setprecision(2) << amount << " to account #" << accounts[index]->getAccountNumber() << ".\n";
             else
-                cout << "Deposit failed.\n";
+                cout << "\nDeposit failed.\n";
         }
-        else if (type == Withdraw) {
+        else if (choice == 2) {
             success = withdraw(accountNum, amount);
             if (success)
-                cout << "Withdrew $" << fixed << setprecision(2) << amount << " from account #" << accounts[index].accountNumber << ".\n";
+                cout << "\nWithdrew $" << fixed << setprecision(2) << amount << " from account #" << accounts[index]->getAccountNumber() << ".\n";
             else
-                cout << "Insufficient funds or invalid withdrawal.\n";
+                cout << "\nInsufficient funds or invalid withdrawal.\n";
         }
         // Show the account after the actual transaction, even if it 'cancels'
         viewAccount(accountNum);
     }
 
-    // Deposit directly for testing
-    bool deposit(int accountNum, double amount) {
-        int index = searchAccount(accountNum); // Search for the actual account
-        if (index == -1 || amount <= 0) {
-            return false; // No account found or the amount is less than 0
-        }
-        // Deposit if it's clear
-        accounts[index].savingsAccountBalance += round(amount * 100.0) / 100.0;
-        return true;
-    }
-
-    // Withdraw directly for testing
-    bool withdraw(int accountNum, double amount) {
-        int index = searchAccount(accountNum); // Search for the actual account
-        if (index == -1 || amount <= 0) return false;
-
-        // Can't overdraw the account
-        if (amount > accounts[index].savingsAccountBalance) {
-            return false;
-        }
-
-        // Rounds the amount
-        accounts[index].savingsAccountBalance -= round(amount * 100.0) / 100.0;
-        return true;
-    }
-
-
     // Saving the actual accounts all to a file for a report
     void saveReport(const string& filename) {
         ofstream report(filename);
-
         if (!report) {
             cout << "Error: Could not open file for writing.\n";
             return;
@@ -275,153 +535,180 @@ public:
         report << "==================================================\n";
         report << setw(30) << "All Accounts\n";
         report << "==================================================\n";
-
         report << left << setw(20) << "Account#" << setw(20) << "Member Name" << setw(20) << "Balance" << endl;
         report << setfill('-') << setw(50) << "-" << endl;
         report << setfill(' ');
 
         for (int i = 0; i < accountCount; i++) {
-            report << left << setw(20) << accounts[i].accountNumber << setw(20) << accounts[i].memberName << "$" << fixed << setprecision(2) << setw(19) << accounts[i].savingsAccountBalance << endl;
+            report << left << setw(20) << accounts[i]->getAccountNumber() << 
+                setw(20) << accounts[i]->getMemberName() << "$" << fixed << setprecision(2) << setw(19) << accounts[i]->getBalance() << endl;
         }
 
         // File Name is given for them to find the actual File
-        report.close();
-        cout << "Report saved successfully to \"" << filename << "\".\n";
+        cout << "Report saved to " << filename << endl;
     }
 
-    // The Most direct way to add an account, this will only be utilized for testing in #DEBUG
-    bool addAccountTest(int accountNumber, const string& memberName, double balance) {
+
+
+
+    // Test functions
+    bool addAccountTest(int accountNumber, const string& memberName, double balance, Account::AccountType type) {
         if (accountCount >= max) {
-            return false;  // No going over the max
-        }
-        if (balance <= 0) {
-            return false; // No balance can be equal to or less than 0
+            return false; // Cannot add more accounts
         }
 
-        // All we're doing is setting everything here
-        accounts[accountCount].accountNumber = accountNumber;
-        accounts[accountCount].memberName = memberName;
-        accounts[accountCount].savingsAccountBalance = balance;
-        accountCount++;
+        Account* newAccount = nullptr;
+        if (type == Account::Savings) {
+            newAccount = new SavingsAccount(accountNumber, memberName, balance, 0.05); // Example interest rate
+        }
+        else if (type == Account::Checking) {
+            newAccount = new CheckingAccount(accountNumber, memberName, balance, 10.0); // Example monthly fee
+        }
+        else {
+            return false; // Invalid account type
+        }
+
+        accounts[accountCount++] = newAccount;
         return true;
     }
 
-    // Public getter for testing
+	// Getter for account count for testing purposes
     int getAccountCount() const {
         return accountCount;
     }
 
+    // Deposit directly for testing
+    bool deposit(int accountNum, double amount) { 
+        int index = searchAccount(accountNum); // Search for the actual account
+        if (index == -1 || amount <= 0) {
+            return false;
+        }
+        // Deposit if it's clear
+        accounts[index]->setBalance(accounts[index]->getBalance() + amount);
+        accounts[index]->recordTransaction(true, amount);
+        return true;
+    }
+
+    // Withdraw directly for testing
+    bool withdraw(int accountNum, double amount) {
+        int index = searchAccount(accountNum); // Search for the actual account
+        if (index == -1 || amount <= 0) {
+            return false;
+        }
+        if (amount > accounts[index]->getBalance()) {
+            return false; // Insufficient funds
+        }
+        accounts[index]->setBalance(accounts[index]->getBalance() - amount);
+        accounts[index]->recordTransaction(false, amount);
+        return true;
+    }
+
     // SIMPLIFIED TESTING TRANSACTION, this is just to test my enumeration
-    bool doTransaction(int accountNum, TransactionType type, double amount) {
+    bool doTransaction(int accountNum, int type, double amount) {
         int index = searchAccount(accountNum); // Search accounts
         if (index == -1) return false; // If there is no account found then it fails
 
-        if (amount <= 0) return false; // If there is a negative balance it fails
+        if (amount <= 0) return false; // If there is a negative or zero amount it fails
 
-        if (type == Deposit) {
-            accounts[index].savingsAccountBalance += amount;
+        if (type == 1) {
+            accounts[index]->setBalance(accounts[index]->getBalance() + amount);
+            accounts[index]->recordTransaction(true, amount);
             return true;
         }
-        else if (type == Withdraw) {
-            if (amount > accounts[index].savingsAccountBalance) return false;
-            accounts[index].savingsAccountBalance -= amount;
+        else if (type == 2) {
+            if (amount > accounts[index]->getBalance()) return false; // Insufficient funds
+            accounts[index]->setBalance(accounts[index]->getBalance() - amount);
+            accounts[index]->recordTransaction(false, amount);
             return true;
         }
         return false; // fallback (shouldn't happen)
     }
-
-
 };
+
+
+
 
 #ifdef _DEBUG
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
-// TEST CLASS METHODS: searchAccount & addAccountTest
-TEST_CASE("Testing for Week 2") {
+// TEST CLASS METHODS for inheritance and composition
+TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     Bank b;
 
-    // Normal addAccountTest - Test 1
-    CHECK(b.addAccountTest(10, "Alice", 100.0) == true); // Array Test 1
-    CHECK(b.getAccountCount() == 1); // Calculation Test 1
-    CHECK(b.searchAccount(10) == 0); // Calculation Test 2
-    CHECK(b.deposit(10, 50) == true); // Calculation Test 3
+    // Test 1: Add Savings Account and verify it initializes correctly
+    CHECK(b.addAccountTest(101, "Alice", 500.0, Account::Savings) == true);
+    CHECK(b.doTransaction(101, 1, 100) == true);
+    CHECK(b.getAccountCount() == 1);
+    CHECK(b.searchAccount(101) == 0);
 
-    // Adding another account - Test 2
-    CHECK(b.addAccountTest(25, "Bob", 50.0) == true); // Array Test 2
-    CHECK(b.getAccountCount() == 2); // Calculation Test 4
-    CHECK(b.searchAccount(25) == 1); // Calculation Test 5
-    CHECK(b.withdraw(25, 25) == true); // Calculation test 6
+    // Test 2: Add Checking Account and verify it initializes correctly
+    CHECK(b.addAccountTest(102, "Bob", 1000.0, Account::Checking) == true);
+	CHECK(b.doTransaction(102, 2, 100) == true);
+    CHECK(b.getAccountCount() == 2);
+    CHECK(b.searchAccount(102) == 1);
 
-    CHECK(b.searchAccount(26) == -1); // Calculation Test 7
+    // Test 3: Deposit into Savings (tests transaction recording and composition)
+    CHECK(b.deposit(101, 100.0) == true);
 
-    // Max Reached - Test 3
-    for (int i = 0; i < 997; i++) {
-        b.addAccountTest(100 + i, "Test", 1.0);
-    }
-    CHECK(b.addAccountTest(9999, "Overflow", 1.0) == false); // Array Test 3
+    // Test 4: Withdraw from Checking (tests transaction recording and composition)
+    CHECK(b.withdraw(102, 200.0) == true);
 
-    // Enumeration tests 1-3 utilizing the doTransaction function for Deposits & Withdraws
-    CHECK(b.doTransaction(10, Bank::Deposit, 5) == true);
-    CHECK(b.doTransaction(25, Bank::Withdraw, 5) == true);
-    CHECK(b.doTransaction(10, Bank::Withdraw, 500) == false);
+    // Test 5: Test search functionality and reject non-existent accounts
+    CHECK(b.searchAccount(999) == -1);
+    CHECK(b.deposit(999, 50) == false);
+
+    // Test 6: Test insufficient funds rejection
+    CHECK(b.withdraw(101, 10000) == false);
 }
 #endif
+
 
 
 #ifndef _DEBUG
 int main()
 {
-    // Declaring our 4 main inputs, choice for the menu, filename for the actual file, accountNum for the viewing accounts, bankManager to access the class
     int choice = 0;
     string filename;
     int accountNum;
     Bank bankManager;
 
-    // If the choice isn't 5 it will continue to run until they enter 5
     while (choice != 5) {
         bankManager.displayMenu();
         cin >> choice;
 
-        // No special characters are allowed, redo if such occurs
         if (cin.fail()) {
             cin.clear();
             cin.ignore(10000, '\n');
-            cout << "Error: You can not use Special characters in this Menu\n";
+            cout << "Error: You can not use special characters in this menu.\n";
             choice = 0;
             continue;
         }
 
-        // Based on their choice, check through switch case what they want to do
-        switch (choice)
-        {
+        switch (choice) {
         case 1:
-            // Call addAccount to make an account
             bankManager.addAccount();
             break;
         case 2:
-            // Calls viewAccount to see account info
             cout << "Enter Account Number: ";
             cin >> accountNum;
             bankManager.viewAccount(accountNum);
             break;
         case 3:
-            // Calls transaction to deposit/withdraw
             bankManager.transaction();
             break;
         case 4:
-            // Saving an actual report of our accounts to a file
             cout << "Enter filename to save report: ";
             cin >> filename;
             bankManager.saveReport(filename);
             break;
+        case 5:
+            cout << "Exiting program...\n";
+            break;
         default:
-            // If none of the above, try again
             cout << "Invalid choice. Try again.\n";
         }
-
     }
-    // Exit Program
-    cout << "Exiting program...\n";
+    return 0;
 }
 #endif

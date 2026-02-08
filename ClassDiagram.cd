@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="TransactionHistory">
+    <Position X="4.75" Y="0.5" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Methods" Collapsed="true" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAACAQBAQgAAIAAAABAAQQA=</HashCode>
+      <FileName>Week01_BankManager.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Account">
+    <Position X="2" Y="0.5" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Methods" Collapsed="true" />
+    </Compartments>
+    <NestedTypes>
+      <Enum Name="Account::AccountType" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Week01_BankManager.cpp</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>AAyAAAAAgAAgACAAAAAgCAAIAAAAAAAAAAACAAAAAEg=</HashCode>
+      <FileName>Week01_BankManager.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SavingsAccount">
+    <Position X="3.5" Y="3.25" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Methods" Collapsed="true" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>AAQAAAAAAAAAgAAQAAAAAQAQAAAAAAAJAAAAAAAAAgg=</HashCode>
+      <FileName>Week01_BankManager.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CheckingAccount">
+    <Position X="0.5" Y="3.25" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Methods" Collapsed="true" />
+    </Compartments>
+    <InheritanceLine Type="Account">
+      <InheritanceModifierLabel ManuallyPlaced="true" ManuallySized="true">
+        <Position X="-0.002" Y="0.06" Height="0.182" Width="0.5" />
+      </InheritanceModifierLabel>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAQAAAAAAACAAAAAAAAAAAAQAAABARAIAAAAAAAAAgg=</HashCode>
+      <FileName>Week01_BankManager.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Bank">
+    <Position X="6.75" Y="2.5" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Fields" Collapsed="true" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>AAAAEgAQAAAAAAAAAQCAAAAAAIABBAIAAAIAAgAAkEA=</HashCode>
+      <FileName>Week01_BankManager.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
