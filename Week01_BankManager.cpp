@@ -1,5 +1,5 @@
 /*
-* Week 4 Assignment - Bank Manager with Inheritance
+* Week 5 Assignment - Account Manager
 * By: Eldon Salman
 * Date: February 8th 2026
 */
@@ -48,7 +48,7 @@ public:
         return totalWithdrawn;
     }
 
-	// Helper methods, record deposit and withdrawal, this will be used in the actual transaction functions to keep track of the history
+    // Helper methods, record deposit and withdrawal, this will be used in the actual transaction functions to keep track of the history
     void recordDeposit(double amount) {
         totalDeposited += amount;
         totalTransactions++;
@@ -107,7 +107,7 @@ public:
         balance = bal;
     }
 
-	// Virtual print function to be called by derived classes, this will print the common account info and then the derived classes will add their own info
+    // Virtual print function to be called by derived classes, this will print the common account info and then the derived classes will add their own info
     virtual void print() const {
         cout << left << setw(20) << accountNumber
             << setw(20) << memberName
@@ -116,11 +116,78 @@ public:
     }
 
     // Virtual method to record transactions
-    virtual void recordTransaction(bool isDeposit, double amount) {
-        // Base class does nothing - derived classes override
-    }
+    virtual void recordTransaction(bool isDeposit, double amount) = 0;
+
+    virtual ~Account() = default;
 };
 
+// Made to manage the accounts
+class AccountManager {
+private:
+    Account** accounts;
+    int accountCount;
+    int capacity;
+
+	// Resizes the array of accounts when we reach capacity, no memory leaks, always increases by 1
+    void resize() {
+        int newCapacity = capacity + 1;;
+        Account** newAccounts = new Account * [newCapacity];
+        for (int i = 0; i < accountCount; i++) {
+            newAccounts[i] = accounts[i];
+        }
+        for (int i = accountCount; i < newCapacity; i++) {
+            newAccounts[i] = nullptr;
+        }
+        delete[] accounts;
+        accounts = newAccounts;
+        capacity = newCapacity;
+    }
+
+public:
+	// Constructor initializes the account manager with a small capacity and no accounts
+    AccountManager() {
+        accountCount = 0;
+        capacity = 1;
+        accounts = new Account * [capacity];
+        for (int i = 0; i < capacity; i++) {
+            accounts[i] = nullptr;
+        }
+    }
+
+	// Adds an account to the manager, checks for null and resizes if needed, returns true if successful
+    bool addAccount(Account* newAccount) {
+        if (newAccount == nullptr) {
+            return false;
+        }
+        if (accountCount >= capacity) {
+            resize();
+        }
+        accounts[accountCount++] = newAccount;
+        return true;
+    }
+
+	// Getter for account count
+    int getCount() const {
+        return accountCount;
+    }
+    
+	// Getter for accounts at a specific index, returns nullptr if index is out of bounds
+    Account* getAt(int index) const {
+        if (index < 0 || index >= accountCount) {
+            return nullptr;
+        }
+        return accounts[index];
+    }
+
+	// Destructor to clean up memory, deletes all accounts and then the array itself
+    ~AccountManager() {
+        for (int i = 0; i < accountCount; i++) {
+            delete accounts[i];
+        }
+        delete[] accounts;
+    }
+
+};
 
 
 // Derived class, Savings adds interest which will be manipulated later on to add interest over time
@@ -264,11 +331,8 @@ public:
 // Class Bank encapsulates the actual functions of the program
 class Bank {
 private:
-    // You can't Manipulate the actual account, you need to access it through the functions
-    static const int max = 999;
-    // 999 Is chosen as the 'max' but hypothetically we could place it at an extremely high number if we wanted to do so
-    Account* accounts[max];
-    int accountCount = 0;
+	// Replaces Account array with an AccountManager object, this is composition as Bank 'has a' AccountManager
+    AccountManager manager;
 
     // All functions are public for Bank Manager usage
 public:
@@ -288,12 +352,6 @@ public:
 
     // We're just adding a new account to the list, the maximum being 999 Accounts
     void addAccount() {
-		// Returns if going over the max amount of accounts
-        if (accountCount >= max) {
-            cout << "Cannot add more accounts. Maximum reached.\n";
-            return;
-        }
-
         // Initializes holders and Error which will be utilized to stop bad inputs
         int accNum;
         string name;
@@ -315,9 +373,9 @@ public:
                 error = true;
             }
 
-            for (int i = 0; i < accountCount; i++) {
+            for (int i = 0; i < manager.getCount(); i++) {
                 // Search for if the account they entered was the same as one of our other accounts
-                if (accNum == accounts[i]->getAccountNumber()) {
+                if (accNum == manager.getAt(i)->getAccountNumber()) {
                     error = true;
                     cout << "! Error: There was a duplicate account number found !\n";
                 }
@@ -382,7 +440,11 @@ public:
             newAccount = new CheckingAccount(accNum, name, bal, monthlyFee);
         }
 
-        accounts[accountCount++] = newAccount;
+        if (!manager.addAccount(newAccount)) {
+            delete newAccount;
+            cout << "! Error: Could not store account !\n";
+            return;
+        }
         cout << "Account added successfully!\n";
     }
 
@@ -411,7 +473,7 @@ public:
         }
 
         // Else it will output the actual index using the virtual print function
-        accounts[index]->print();
+        manager.getAt(index)->print();
 
         cout << right << setfill(' ');
     }
@@ -420,8 +482,8 @@ public:
     int searchAccount(int accountNum) {
         // Account is searched for, once found it is indexed to be used for the transaction
         int index = -1;
-        for (int i = 0; i < accountCount; i++) {
-            if (accounts[i]->getAccountNumber() == accountNum) {
+        for (int i = 0; i < manager.getCount(); i++) {
+            if (manager.getAt(i)->getAccountNumber() == accountNum) {
                 index = i;
                 break;
             }
@@ -432,14 +494,14 @@ public:
 
 
     void transaction() {
-		// Initializes needed varriables including Error again to stop bad inputs, and index to find the account
+        // Initializes needed varriables including Error again to stop bad inputs, and index to find the account
         int accountNum;
         int choice;
         double amount;
         bool error = true;
         int index;
 
-        
+
         while (error) {
             error = false;
             cout << "\nEnter Account Number: ";
@@ -452,7 +514,7 @@ public:
                 error = true;
                 continue;
             }
-			// Searches for the account number to see if it exists, if it doesn't it will output an error and return to the menu
+            // Searches for the account number to see if it exists, if it doesn't it will output an error and return to the menu
             index = searchAccount(accountNum);
             if (index == -1) {
                 error = true;
@@ -480,7 +542,7 @@ public:
             return;
         }
 
-		// They could also input 0 or negative amounts, and we don't want that, so we will check for that as well as for bad inputs
+        // They could also input 0 or negative amounts, and we don't want that, so we will check for that as well as for bad inputs
         error = true;
         while (error) {
             error = false;
@@ -503,19 +565,19 @@ public:
             }
         }
 
-		// Call deposit or withdrawl and record it in the transaction history, then show the account after the transaction, even if it fails, to show the user what happened
+        // Call deposit or withdrawl and record it in the transaction history, then show the account after the transaction, even if it fails, to show the user what happened
         bool success = false;
         if (choice == 1) {
             success = deposit(accountNum, amount);
             if (success)
-                cout << "\nDeposited $" << fixed << setprecision(2) << amount << " to account #" << accounts[index]->getAccountNumber() << ".\n";
+                cout << "\nDeposited $" << fixed << setprecision(2) << amount << " to account #" << manager.getAt(index)->getAccountNumber() << ".\n";
             else
                 cout << "\nDeposit failed.\n";
         }
         else if (choice == 2) {
             success = withdraw(accountNum, amount);
             if (success)
-                cout << "\nWithdrew $" << fixed << setprecision(2) << amount << " from account #" << accounts[index]->getAccountNumber() << ".\n";
+                cout << "\nWithdrew $" << fixed << setprecision(2) << amount << " from account #" << manager.getAt(index)->getAccountNumber() << ".\n";
             else
                 cout << "\nInsufficient funds or invalid withdrawal.\n";
         }
@@ -539,24 +601,18 @@ public:
         report << setfill('-') << setw(50) << "-" << endl;
         report << setfill(' ');
 
-        for (int i = 0; i < accountCount; i++) {
-            report << left << setw(20) << accounts[i]->getAccountNumber() << 
-                setw(20) << accounts[i]->getMemberName() << "$" << fixed << setprecision(2) << setw(19) << accounts[i]->getBalance() << endl;
+        for (int i = 0; i < manager.getCount(); i++) {
+            Account* account = manager.getAt(i);
+            report << left << setw(20) << account->getAccountNumber() <<
+                setw(20) << account->getMemberName() << "$" << fixed << setprecision(2) << setw(19) << account->getBalance() << endl;
         }
 
         // File Name is given for them to find the actual File
         cout << "Report saved to " << filename << endl;
     }
 
-
-
-
     // Test functions
     bool addAccountTest(int accountNumber, const string& memberName, double balance, Account::AccountType type) {
-        if (accountCount >= max) {
-            return false; // Cannot add more accounts
-        }
-
         Account* newAccount = nullptr;
         if (type == Account::Savings) {
             newAccount = new SavingsAccount(accountNumber, memberName, balance, 0.05); // Example interest rate
@@ -568,24 +624,24 @@ public:
             return false; // Invalid account type
         }
 
-        accounts[accountCount++] = newAccount;
-        return true;
+        return manager.addAccount(newAccount);
     }
 
-	// Getter for account count for testing purposes
+    // Getter for account count for testing purposes
     int getAccountCount() const {
-        return accountCount;
+        return manager.getCount();
     }
 
     // Deposit directly for testing
-    bool deposit(int accountNum, double amount) { 
+    bool deposit(int accountNum, double amount) {
         int index = searchAccount(accountNum); // Search for the actual account
         if (index == -1 || amount <= 0) {
             return false;
         }
         // Deposit if it's clear
-        accounts[index]->setBalance(accounts[index]->getBalance() + amount);
-        accounts[index]->recordTransaction(true, amount);
+        Account* account = manager.getAt(index);
+        account->setBalance(account->getBalance() + amount);
+        account->recordTransaction(true, amount);
         return true;
     }
 
@@ -595,11 +651,12 @@ public:
         if (index == -1 || amount <= 0) {
             return false;
         }
-        if (amount > accounts[index]->getBalance()) {
+        Account* account = manager.getAt(index);
+        if (amount > account->getBalance()) {
             return false; // Insufficient funds
         }
-        accounts[index]->setBalance(accounts[index]->getBalance() - amount);
-        accounts[index]->recordTransaction(false, amount);
+        account->setBalance(account->getBalance() - amount);
+        account->recordTransaction(false, amount);
         return true;
     }
 
@@ -610,15 +667,17 @@ public:
 
         if (amount <= 0) return false; // If there is a negative or zero amount it fails
 
+        Account* account = manager.getAt(index);
+
         if (type == 1) {
-            accounts[index]->setBalance(accounts[index]->getBalance() + amount);
-            accounts[index]->recordTransaction(true, amount);
+            account->setBalance(account->getBalance() + amount);
+            account->recordTransaction(true, amount);
             return true;
         }
         else if (type == 2) {
-            if (amount > accounts[index]->getBalance()) return false; // Insufficient funds
-            accounts[index]->setBalance(accounts[index]->getBalance() - amount);
-            accounts[index]->recordTransaction(false, amount);
+            if (amount > account->getBalance()) return false; // Insufficient funds
+            account->setBalance(account->getBalance() - amount);
+            account->recordTransaction(false, amount);
             return true;
         }
         return false; // fallback (shouldn't happen)
@@ -644,7 +703,7 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
 
     // Test 2: Add Checking Account and verify it initializes correctly
     CHECK(b.addAccountTest(102, "Bob", 1000.0, Account::Checking) == true);
-	CHECK(b.doTransaction(102, 2, 100) == true);
+    CHECK(b.doTransaction(102, 2, 100) == true);
     CHECK(b.getAccountCount() == 2);
     CHECK(b.searchAccount(102) == 1);
 
