@@ -1,5 +1,5 @@
 /*
-* Week 5 Assignment - Account Manager
+* Week 6 Assignment - Account Manager
 * By: Eldon Salman
 * Date: February 8th 2026
 */
@@ -10,12 +10,37 @@
 #include <cmath>
 #include <fstream>
 #include <string>
+
+#if defined(_DEBUG)
+#define _CRTDBG_MAP_ALLOC
+#if __has_include(<crtdbg.h>)
+#include <stdlib.h>
+#include <crtdbg.h>
+#endif
+#endif
+
 using namespace std;
 
+#if defined(_DEBUG)
+struct CrtLeakCheckSetup {
+    CrtLeakCheckSetup() {
+        _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    }
+    ~CrtLeakCheckSetup() {
+        _CrtDumpMemoryLeaks();
+    }
+};
+
+static CrtLeakCheckSetup g_crtLeakCheckSetup;
+#endif
 
 
 
-
+// Helper Function to Round to the Nearest Cent, first template function
+template <typename T>
+T roundCurrency(T value) {
+    return static_cast<T>(round(value * static_cast<T>(100)) / static_cast<T>(100));
+}
 
 // My Composition class, just keeps track of transactions but more may be added soon
 class TransactionHistory {
@@ -115,76 +140,155 @@ public:
             << endl;
     }
 
+    // Virtual toStream function for file output, this will be overridden by derived classes to add their own info as well
+    virtual void toStream(ostream& os) const {
+        os << "Account #" << accountNumber
+            << " | " << memberName
+            << " | Balance: $" << fixed << setprecision(2) << balance;
+    }
+
     // Virtual method to record transactions
     virtual void recordTransaction(bool isDeposit, double amount) = 0;
+
+    // Overload form of output, directly outputs the account info to the stream, this will call the toStream function which will be overridden by derived classes to add their own info as well
+    friend ostream& operator<<(ostream& os, const Account& account) {
+        account.toStream(os);
+        return os;
+    }
 
     virtual ~Account() = default;
 };
 
-// Made to manage the accounts
-class AccountManager {
+// Template class for a dynamic array, this will be used to store the accounts in the AccountManager
+template <typename T>
+class DynamicArray {
 private:
-    Account** accounts;
-    int accountCount;
-    int capacity;
+    T* accountsList;
+    int count; // ACTUAL number of accounts in the array
+    int capacity; // Coding number of accounts the array can hold before resizing
 
-	// Resizes the array of accounts when we reach capacity, no memory leaks, always increases by 1
     void resize() {
-        int newCapacity = capacity + 1;;
-        Account** newAccounts = new Account * [newCapacity];
-        for (int i = 0; i < accountCount; i++) {
-            newAccounts[i] = accounts[i];
+        int newCapacity = capacity + 1;
+        T* newList = new T[newCapacity];
+        for (int i = 0; i < count; i++) {
+            newList[i] = accountsList[i];
         }
-        for (int i = accountCount; i < newCapacity; i++) {
-            newAccounts[i] = nullptr;
+        for (int i = count; i < newCapacity; i++) {
+            newList[i] = T();
         }
-        delete[] accounts;
-        accounts = newAccounts;
+        delete[] accountsList;
+        accountsList = newList;
         capacity = newCapacity;
     }
 
 public:
-	// Constructor initializes the account manager with a small capacity and no accounts
-    AccountManager() {
-        accountCount = 0;
-        capacity = 1;
-        accounts = new Account * [capacity];
+    DynamicArray() {
+        count = 0; // Start with 0 accounts
+        capacity = 1; // `capacity` starts at 1 to allow for the first account to be added without resizing
+        accountsList = new T[capacity];
         for (int i = 0; i < capacity; i++) {
-            accounts[i] = nullptr;
+            accountsList[i] = T();
         }
     }
 
-	// Adds an account to the manager, checks for null and resizes if needed, returns true if successful
+    // Adds an account to the manager, checks for null and resizes if needed, returns true if successful
+    bool add(const T& value) {
+        if (count >= capacity) {
+            resize();
+        }
+        accountsList[count++] = value;
+        return true;
+    }
+
+    bool removeAt(int index) {
+        if (index < 0 || index >= count) {
+            return false;
+        }
+        for (int i = index; i < count - 1; i++) {
+            accountsList[i] = accountsList[i + 1];
+        }
+        accountsList[count - 1] = T();
+        count--;
+        return true;
+    }
+
+    // Getter for accounts at a specific index, returns nullptr if index is out of bounds
+    T getAt(int index) const {
+        if (index < 0 || index >= count) {
+            return T();
+        }
+        return accountsList[index];
+    }
+
+    T operator[](int index) const {
+        return getAt(index);
+    }
+
+    // Getter for account count
+    int size() const {
+        return count;
+    }
+
+    // Destructor to clean up memory, deletes all accounts and then the array itself
+    ~DynamicArray() {
+        delete[] accountsList;
+    }
+};
+
+
+// Made to manage the accounts
+class AccountManager {
+private:
+    DynamicArray<Account*> accounts;
+
+public:
+    // Adds an account to the manager, this calls upon OPERATOR+= to add the account, checks for null and returns true if successful
     bool addAccount(Account* newAccount) {
         if (newAccount == nullptr) {
             return false;
         }
-        if (accountCount >= capacity) {
-            resize();
-        }
-        accounts[accountCount++] = newAccount;
+        *this += newAccount;
         return true;
     }
 
-	// Getter for account count
-    int getCount() const {
-        return accountCount;
-    }
-    
-	// Getter for accounts at a specific index, returns nullptr if index is out of bounds
-    Account* getAt(int index) const {
-        if (index < 0 || index >= accountCount) {
-            return nullptr;
+    // Operator addition to add an account
+    AccountManager& operator+=(Account* newAccount) {
+        if (newAccount != nullptr) {
+            this->accounts.add(newAccount);
         }
+        return *this;
+    }
+
+    // Operator subtraction to remove an account || NOT TO BE USED YET, 
+    AccountManager& operator-=(int index) {
+        Account* accountToRemove = (*this)[index];
+        if (accountToRemove == nullptr) {
+            return *this;
+        }
+        delete accountToRemove;
+        accounts.removeAt(index);
+        return *this;
+    }
+
+    Account* operator[](int index) const {
         return accounts[index];
     }
 
-	// Destructor to clean up memory, deletes all accounts and then the array itself
+    // Getter for account count
+    int getCount() const {
+        return accounts.size();
+    }
+
+    // Getter for accounts at a specific index, returns nullptr if index is out of bounds
+    Account* getAt(int index) const {
+        return (*this)[index];
+    }
+
+    // Destructor to clean up memory, deletes all accounts and then the array itself
     ~AccountManager() {
-        for (int i = 0; i < accountCount; i++) {
-            delete accounts[i];
+        for (int i = 0; i < accounts.size(); i++) {
+            delete accounts.getAt(i);
         }
-        delete[] accounts;
     }
 
 };
@@ -240,6 +344,13 @@ public:
             << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
     }
 
+    void toStream(ostream& os) const override {
+        os << "Savings #" << accountNumber
+            << " | " << memberName
+            << " | Balance: $" << fixed << setprecision(2) << balance
+            << " | Rate: " << fixed << setprecision(2) << interestRate * 100 << "%";
+    }
+
     // To be used later on, no utilization now but more in the future
     double calculateInterest() const {
         return balance * interestRate;
@@ -251,6 +362,11 @@ public:
             history.recordDeposit(amount);
         else
             history.recordWithdrawal(amount);
+    }
+
+
+    bool operator==(const SavingsAccount& other) const {
+        return memberName == other.memberName;
     }
 };
 
@@ -309,6 +425,13 @@ public:
             << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
     }
 
+    void toStream(ostream& os) const override {
+        os << "Checking #" << accountNumber
+            << " | " << memberName
+            << " | Balance: $" << fixed << setprecision(2) << balance
+            << " | Fee: $" << fixed << setprecision(2) << monthlyFee;
+    }
+
     // Helper method
     void applyMonthlyFee() {
         balance -= monthlyFee;
@@ -331,7 +454,7 @@ public:
 // Class Bank encapsulates the actual functions of the program
 class Bank {
 private:
-	// Replaces Account array with an AccountManager object, this is composition as Bank 'has a' AccountManager
+    // Replaces Account array with an AccountManager object, this is composition as Bank 'has a' AccountManager
     AccountManager manager;
 
     // All functions are public for Bank Manager usage
@@ -343,10 +466,11 @@ public:
         cout << setw(32) << "SimpleBank Menu\n";
         cout << "==================================================\n";
         cout << "1. Add account\n";
-        cout << "2. View accounts\n";
+        cout << "2. View account\n";
         cout << "3. Deposit or Withdraw\n";
         cout << "4. Save report\n";
-        cout << "5. Exit\n";
+        cout << "5. Delete account\n";
+        cout << "6. Exit\n";
         cout << "Choose an option: ";
     }
 
@@ -401,8 +525,8 @@ public:
             cout << "\nEnter Savings Balance ($##.##): ";
             cin >> bal;
 
-            // Rounds it to the nearest dollar via: Making it whole numbers, rounding it to the nearest dollar, turn it back into cents
-            bal = round(bal * 100.0) / 100.0;
+            // Rounds it via template helper
+            bal = roundCurrency(bal);
 
             // If another failure happens we restart the question to get a proper number
             if (cin.fail()) {
@@ -478,6 +602,29 @@ public:
         cout << right << setfill(' ');
     }
 
+    // View member is similar to view account but it will search for all accounts with that member name and display them
+    void viewMember(const string& memberName) {
+        bool found = false;
+
+        cout << "\n==================================================\n";
+        cout << setw(35) << "Member Accounts\n";
+        cout << "==================================================\n";
+
+        for (int i = 0; i < manager.getCount(); i++) {
+            // Searches through all accounts and if the member name matches it will output the account
+            Account* account = manager[i];
+            // Uses Operator comparison and Operator print to output the account, this is to show operator overloading
+            if (account->getMemberName() == memberName) {
+                cout << *account << endl;
+                found = true;
+            }
+        }
+
+        if (!found) {
+            cout << "! There were no accounts found for that member !\n";
+        }
+    }
+
 
     int searchAccount(int accountNum) {
         // Account is searched for, once found it is indexed to be used for the transaction
@@ -549,8 +696,8 @@ public:
             cout << "\nEnter amount ($##.##): ";
             cin >> amount;
 
-            // Rounds it to the nearest dollar via: Making it whole numbers, rounding it to the nearest dollar, turn it back into cents
-            amount = round(amount * 100.0) / 100.0;
+            // Rounds it via template helper
+            amount = roundCurrency(amount);
 
             if (cin.fail()) {
                 cin.clear();
@@ -583,6 +730,16 @@ public:
         }
         // Show the account after the actual transaction, even if it 'cancels'
         viewAccount(accountNum);
+    }
+
+    double deleteAccount(int accountNum) {
+        int index = searchAccount(accountNum);
+        if (index == -1) {
+            return -1; // Account not found
+        }
+        double balance = manager.getAt(index)->getBalance();
+        manager -= index;
+        return balance;
     }
 
     // Saving the actual accounts all to a file for a report
@@ -662,25 +819,13 @@ public:
 
     // SIMPLIFIED TESTING TRANSACTION, this is just to test my enumeration
     bool doTransaction(int accountNum, int type, double amount) {
-        int index = searchAccount(accountNum); // Search accounts
-        if (index == -1) return false; // If there is no account found then it fails
-
-        if (amount <= 0) return false; // If there is a negative or zero amount it fails
-
-        Account* account = manager.getAt(index);
-
         if (type == 1) {
-            account->setBalance(account->getBalance() + amount);
-            account->recordTransaction(true, amount);
-            return true;
+            return deposit(accountNum, amount);
         }
         else if (type == 2) {
-            if (amount > account->getBalance()) return false; // Insufficient funds
-            account->setBalance(account->getBalance() - amount);
-            account->recordTransaction(false, amount);
-            return true;
+            return withdraw(accountNum, amount);
         }
-        return false; // fallback (shouldn't happen)
+        return false;
     }
 };
 
@@ -719,6 +864,58 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
 
     // Test 6: Test insufficient funds rejection
     CHECK(b.withdraw(101, 10000) == false);
+
+    // Test 7-8: operator== equality and inequality
+    SavingsAccount eqA(201, "Alex", 100.0, 0.05);
+    SavingsAccount eqB(202, "Alex", 300.0, 0.03);
+    SavingsAccount neqA(203, "Blake", 100.0, 0.05);
+    CHECK(eqA == eqB);
+    CHECK_FALSE(eqA == neqA);
+
+    // Test 9-10: operator<< output using ostringstream
+    ostringstream savingsOut;
+    savingsOut << static_cast<const Account&>(eqA);
+    CHECK(savingsOut.str() == "Savings #201 | Alex | Balance: $100.00 | Rate: 5.00%");
+
+    CheckingAccount checkStream(204, "Casey", 250.0, 10.0);
+    ostringstream checkingOut;
+    checkingOut << static_cast<const Account&>(checkStream);
+    CHECK(checkingOut.str() == "Checking #204 | Casey | Balance: $250.00 | Fee: $10.00");
+
+    // Test 11-12: operator[] valid and invalid index behavior
+    AccountManager indexManager;
+    indexManager += new SavingsAccount(301, "Dana", 500.0, 0.05);
+    CHECK(indexManager[0] != nullptr);
+    CHECK(indexManager[0]->getAccountNumber() == 301);
+    CHECK(indexManager[99] == nullptr);
+
+    // Test 13-14: operator+= add and operator-= remove/shift
+    AccountManager opManager;
+    opManager += new SavingsAccount(401, "Erin", 600.0, 0.05);
+    opManager += new CheckingAccount(402, "Flynn", 700.0, 10.0);
+    CHECK(opManager.getCount() == 2);
+    CHECK(opManager[1] != nullptr);
+    CHECK(opManager[1]->getAccountNumber() == 402);
+
+    opManager -= 0;
+    CHECK(opManager.getCount() == 1);
+    CHECK(opManager[0] != nullptr);
+    CHECK(opManager[0]->getAccountNumber() == 402);
+
+    // Test 15-16: function template usage (int and double)
+    CHECK(roundCurrency(42) == 42);
+    CHECK(roundCurrency(12.346) == 12.35);
+
+    // Test 17-18: class template usage (store/remove/resizing)
+    DynamicArray<int> values;
+    CHECK(values.add(10) == true);
+    CHECK(values.add(20) == true);
+    CHECK(values.add(30) == true);
+    CHECK(values.size() == 3);
+    CHECK(values[1] == 20);
+    CHECK(values.removeAt(1) == true);
+    CHECK(values.size() == 2);
+    CHECK(values[1] == 30);
 }
 #endif
 
@@ -729,10 +926,12 @@ int main()
 {
     int choice = 0;
     string filename;
-    int accountNum;
+    string memberName;
+    int searchChoice;
     Bank bankManager;
+    double balance;
 
-    while (choice != 5) {
+    while (choice != 6) {
         bankManager.displayMenu();
         cin >> choice;
 
@@ -746,22 +945,69 @@ int main()
 
         switch (choice) {
         case 1:
+            // Calls the add account function which will ask for all the needed info and add the account to the manager
             bankManager.addAccount();
             break;
         case 2:
-            cout << "Enter Account Number: ";
-            cin >> accountNum;
-            bankManager.viewAccount(accountNum);
+            cout << "Would you like to search by account number or member name? (1 for Account Number, 2 for Member Name): ";
+            cin >> searchChoice;
+            if (cin.fail() || (searchChoice != 1 && searchChoice != 2)) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "! Error: Invalid search type choice !\n";
+                break;
+            }
+            if (searchChoice == 1) {
+                cout << "Enter Account Number: ";
+                cin >> searchChoice;
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(10000, '\n');
+                    cout << "Error: You can not use special characters for account number.\n";
+                    break;
+                }
+                bankManager.viewAccount(searchChoice);
+            }
+            else {
+                cin.ignore(10000, '\n');
+                cout << "Enter Member Name: ";
+                getline(cin, memberName);
+                bankManager.viewMember(memberName);
+            }
             break;
         case 3:
+            // Calls the transaction function which will ask for the account number, transaction type, and amount to do the transaction, this will also show the account after the transaction to show the user what happened
             bankManager.transaction();
             break;
         case 4:
+            // Calls the save report function which will ask for a file name and then save all the accounts to that file in a nice format, this is to show file output
             cout << "Enter filename to save report: ";
             cin >> filename;
             bankManager.saveReport(filename);
             break;
         case 5:
+            // Calls the delete account function which will ask for the account number to delete, this will also return the final balance of the deleted account to show the user what they got back
+            cout << "Enter Account Number to delete: ";
+            cin >> searchChoice;
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "Error: You can not use special characters for account number.\n";
+                break;
+            }
+
+            // Deletes the account and returns the balance, if the balance is -1 then there was no account found with that number
+            balance = bankManager.deleteAccount(searchChoice);
+            if (balance != -1) {
+                cout << "Account deleted successfully.\n";
+                cout << "Final balance of deleted account returned: $" << fixed << setprecision(2) << balance << endl;
+            }
+            else {
+                cout << "! Error: No account found with that number !\n";
+            }
+            break;
+        case 6:
+            // Exits the program, this is to show the user that they can exit when they want and that the program doesn't crash when they do
             cout << "Exiting program...\n";
             break;
         default:

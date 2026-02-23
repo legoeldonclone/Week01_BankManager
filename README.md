@@ -14,9 +14,12 @@ Project for my ITCS-2550 Class, this program is a Bank Manager capable of the fo
 - Viewing Accounts
 	- Formats account information in a table for easy reading.
 	- Relies on Account Number to properly access account information.
+	- Can view all accounts or a specific account by Member Name
 - Deposits/Withdrawals
 	- Allows deposits and withdrawals to/from accounts.
 	- Withdrawals may not be negative
+- Closing Accounts
+	- Allows accounts to be closed, withdrawing the balance and removing the account from the system.
 - Saving Bank accounts into a file
 	- Saves all account information into a .txt file.
 	- Formats it into a readable table like the View Accounts feature.
