@@ -53,7 +53,7 @@
     </TypeIdentifier>
   </Class>
   <Class Name="Bank">
-    <Position X="8.25" Y="1" Width="1.5" />
+    <Position X="8" Y="0.75" Width="1.5" />
     <Compartments>
       <Compartment Name="Fields" Collapsed="true" />
     </Compartments>
@@ -82,8 +82,21 @@
       <FileName>Week01_BankManager.cpp</FileName>
     </TypeIdentifier>
   </Class>
+  <Class Name="BankException">
+    <Position X="10.25" Y="2.25" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Methods" Collapsed="true" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAEACA=</HashCode>
+      <FileName>Week01_BankManager.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
   <Struct Name="CrtLeakCheckSetup">
-    <Position X="10.25" Y="1" Width="1.5" />
+    <Position X="10.25" Y="0.75" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Methods" Collapsed="true" />
+    </Compartments>
     <TypeIdentifier>
       <HashCode>AAAAAAgAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>Week01_BankManager.cpp</FileName>

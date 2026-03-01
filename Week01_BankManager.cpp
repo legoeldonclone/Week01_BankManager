@@ -1,7 +1,7 @@
 /*
-* Week 6 Assignment - Account Manager
+* Week 7 Assignment - Account Manager
 * By: Eldon Salman
-* Date: February 8th 2026
+* Date: March 1st 2026
 */
 
 // All of the needed libraries
@@ -10,6 +10,8 @@
 #include <cmath>
 #include <fstream>
 #include <string>
+#include <exception>
+#include <stdexcept>
 
 #if defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC
@@ -20,6 +22,20 @@
 #endif
 
 using namespace std;
+
+// Custom exception class for bank-related errors, such as invalid account removal/index
+class BankException : public exception {
+private:
+    string message;
+
+public:
+    explicit BankException(const string& msg) : message(msg) {
+    }
+
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
 
 #if defined(_DEBUG)
 struct CrtLeakCheckSetup {
@@ -202,7 +218,7 @@ public:
 
     bool removeAt(int index) {
         if (index < 0 || index >= count) {
-            return false;
+            throw out_of_range("DynamicArray: removeAt invalid index");
         }
         for (int i = index; i < count - 1; i++) {
             accountsList[i] = accountsList[i + 1];
@@ -215,7 +231,7 @@ public:
     // Getter for accounts at a specific index, returns nullptr if index is out of bounds
     T getAt(int index) const {
         if (index < 0 || index >= count) {
-            return T();
+            throw out_of_range("DynamicArray: getAt invalid index");
         }
         return accountsList[index];
     }
@@ -261,10 +277,10 @@ public:
 
     // Operator subtraction to remove an account || NOT TO BE USED YET, 
     AccountManager& operator-=(int index) {
-        Account* accountToRemove = (*this)[index];
-        if (accountToRemove == nullptr) {
-            return *this;
+        if (index < 0 || index >= accounts.size()) {
+            throw BankException("Account removal failed: invalid index");
         }
+        Account* accountToRemove = (*this)[index];
         delete accountToRemove;
         accounts.removeAt(index);
         return *this;
@@ -887,7 +903,7 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     indexManager += new SavingsAccount(301, "Dana", 500.0, 0.05);
     CHECK(indexManager[0] != nullptr);
     CHECK(indexManager[0]->getAccountNumber() == 301);
-    CHECK(indexManager[99] == nullptr);
+    CHECK_THROWS_AS(indexManager[99], out_of_range);
 
     // Test 13-14: operator+= add and operator-= remove/shift
     AccountManager opManager;
@@ -901,6 +917,7 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     CHECK(opManager.getCount() == 1);
     CHECK(opManager[0] != nullptr);
     CHECK(opManager[0]->getAccountNumber() == 402);
+    CHECK_THROWS_AS(opManager -= 99, BankException);
 
     // Test 15-16: function template usage (int and double)
     CHECK(roundCurrency(42) == 42);
@@ -916,6 +933,8 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     CHECK(values.removeAt(1) == true);
     CHECK(values.size() == 2);
     CHECK(values[1] == 30);
+    CHECK_THROWS_AS(values[99], out_of_range);
+    CHECK_THROWS_AS(values.removeAt(99), out_of_range);
 }
 #endif
 
