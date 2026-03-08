@@ -210,6 +210,10 @@ PublishScripts/
 csx/
 *.build.csdef
 
+# Bank report output artifact
+BankReport
+BankReport.txt
+
 # Microsoft Azure Emulator
 ecf/
 rcf/
