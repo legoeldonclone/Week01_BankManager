@@ -1,7 +1,7 @@
 /*
-* Week 7 Assignment - Account Manager
+* Week 8 Assignment - Recursive Functions
 * By: Eldon Salman
-* Date: March 1st 2026
+* Date: March 8th 2026
 */
 
 // All of the needed libraries
@@ -245,6 +245,20 @@ public:
         return count;
     }
 
+    // Recursive print function
+    void printAllRecursive(int startIndex = 0) const {
+        if (startIndex >= count) {
+            return;
+        }
+
+        if (accountsList[startIndex] != nullptr) {
+            accountsList[startIndex]->print();
+            cout << endl;
+        }
+
+        printAllRecursive(startIndex + 1);
+    }
+
     // Destructor to clean up memory, deletes all accounts and then the array itself
     ~DynamicArray() {
         delete[] accountsList;
@@ -298,6 +312,11 @@ public:
     // Getter for accounts at a specific index, returns nullptr if index is out of bounds
     Account* getAt(int index) const {
         return (*this)[index];
+    }
+
+    // Simple wrapper so Bank can use the existing recursive print function.
+    void printAllAccountsRecursive() const {
+        accounts.printAllRecursive();
     }
 
     // Destructor to clean up memory, deletes all accounts and then the array itself
@@ -779,6 +798,14 @@ public:
             report << left << setw(20) << account->getAccountNumber() <<
                 setw(20) << account->getMemberName() << "$" << fixed << setprecision(2) << setw(19) << account->getBalance() << endl;
         }
+
+        // Recursive implementation usage (prints same report rows to console).
+        cout << "==================================================\n";
+        cout << setw(30) << "All Accounts\n";
+        cout << "==================================================\n";
+        cout << left << setw(20) << "Account#" << setw(20) << "Member Name" << setw(20) << "Balance" << endl;
+        manager.printAllAccountsRecursive();
+        cout << right << setfill(' ') << defaultfloat << setprecision(6);
 
         // File Name is given for them to find the actual File
         cout << "Report saved to " << filename << endl;
