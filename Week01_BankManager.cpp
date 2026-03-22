@@ -1,7 +1,7 @@
 /*
-* Week 8 Assignment - Recursive Functions
+* Week 9 Assignment - Searching and Sorting
 * By: Eldon Salman
-* Date: March 8th 2026
+* Date: March 22nd 2026
 */
 
 // All of the needed libraries
@@ -12,6 +12,7 @@
 #include <string>
 #include <exception>
 #include <stdexcept>
+#include <vector>
 
 #if defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC
@@ -175,101 +176,24 @@ public:
     virtual ~Account() = default;
 };
 
-// Template class for a dynamic array, this will be used to store the accounts in the AccountManager
-template <typename T>
-class DynamicArray {
-private:
-    T* accountsList;
-    int count; // ACTUAL number of accounts in the array
-    int capacity; // Coding number of accounts the array can hold before resizing
-
-    void resize() {
-        int newCapacity = capacity + 1;
-        T* newList = new T[newCapacity];
-        for (int i = 0; i < count; i++) {
-            newList[i] = accountsList[i];
-        }
-        for (int i = count; i < newCapacity; i++) {
-            newList[i] = T();
-        }
-        delete[] accountsList;
-        accountsList = newList;
-        capacity = newCapacity;
-    }
-
-public:
-    DynamicArray() {
-        count = 0; // Start with 0 accounts
-        capacity = 1; // `capacity` starts at 1 to allow for the first account to be added without resizing
-        accountsList = new T[capacity];
-        for (int i = 0; i < capacity; i++) {
-            accountsList[i] = T();
-        }
-    }
-
-    // Adds an account to the manager, checks for null and resizes if needed, returns true if successful
-    bool add(const T& value) {
-        if (count >= capacity) {
-            resize();
-        }
-        accountsList[count++] = value;
-        return true;
-    }
-
-    bool removeAt(int index) {
-        if (index < 0 || index >= count) {
-            throw out_of_range("DynamicArray: removeAt invalid index");
-        }
-        for (int i = index; i < count - 1; i++) {
-            accountsList[i] = accountsList[i + 1];
-        }
-        accountsList[count - 1] = T();
-        count--;
-        return true;
-    }
-
-    // Getter for accounts at a specific index, returns nullptr if index is out of bounds
-    T getAt(int index) const {
-        if (index < 0 || index >= count) {
-            throw out_of_range("DynamicArray: getAt invalid index");
-        }
-        return accountsList[index];
-    }
-
-    T operator[](int index) const {
-        return getAt(index);
-    }
-
-    // Getter for account count
-    int size() const {
-        return count;
-    }
-
-    // Recursive print function
-    void printAllRecursive(int startIndex = 0) const {
-        if (startIndex >= count) {
-            return;
-        }
-
-        if (accountsList[startIndex] != nullptr) {
-            accountsList[startIndex]->print();
-            cout << endl;
-        }
-
-        printAllRecursive(startIndex + 1);
-    }
-
-    // Destructor to clean up memory, deletes all accounts and then the array itself
-    ~DynamicArray() {
-        delete[] accountsList;
-    }
-};
-
-
 // Made to manage the accounts
 class AccountManager {
 private:
-    DynamicArray<Account*> accounts;
+    vector<Account*> accounts;
+
+
+    void printAllAccountsRecursiveHelper(int startIndex) const {
+        if (startIndex >= getCount()) {
+            return;
+        }
+
+        if (accounts.at(startIndex) != nullptr) {
+            accounts.at(startIndex)->print();
+            cout << endl;
+        }
+
+        printAllAccountsRecursiveHelper(startIndex + 1);
+    }
 
 public:
     // Adds an account to the manager, this calls upon OPERATOR+= to add the account, checks for null and returns true if successful
@@ -284,24 +208,24 @@ public:
     // Operator addition to add an account
     AccountManager& operator+=(Account* newAccount) {
         if (newAccount != nullptr) {
-            this->accounts.add(newAccount);
+            this->accounts.push_back(newAccount);
         }
         return *this;
     }
 
     // Operator subtraction to remove an account || NOT TO BE USED YET, 
     AccountManager& operator-=(int index) {
-        if (index < 0 || index >= accounts.size()) {
+        if (index < 0 || index >= getCount()) {
             throw BankException("Account removal failed: invalid index");
         }
         Account* accountToRemove = (*this)[index];
         delete accountToRemove;
-        accounts.removeAt(index);
+        accounts.erase(accounts.begin() + index);
         return *this;
     }
 
     Account* operator[](int index) const {
-        return accounts[index];
+        return accounts.at(index);
     }
 
     // Getter for account count
@@ -311,18 +235,95 @@ public:
 
     // Getter for accounts at a specific index, returns nullptr if index is out of bounds
     Account* getAt(int index) const {
-        return (*this)[index];
+        if (index < 0 || index >= getCount()) {
+            return nullptr;
+        }
+        return accounts.at(index);
+    }
+
+    // Sequential search by account number (returns index or -1 if not found)
+    int sequentialSearch(int accountNum) const {
+        for (int i = 0; i < getCount(); i++) {
+            Account* account = getAt(i);
+            if (account != nullptr && account->getAccountNumber() == accountNum) {
+                return i;
+            }
+        }
+        // If not found, return -1
+        return -1;
+    }
+
+    // Bubble sort by account number (ascending)
+    bool sortingAccounts() {
+        int n = getCount();
+
+        // Can't be less that two for comparissons
+        if (n < 2) {
+            return false;
+        }
+
+        // First for 'Pass' it counts the tail of the array that is already sorted
+        for (int pass = 0; pass < n - 1; pass++) {
+            bool swapped = false;
+
+            // Compare left and right, if left is greater than right then swap
+            // This will 'bubble' the largest account number to the end of the array, then the next pass will ignore it
+            for (int i = 0; i < n - 1 - pass; i++) {
+                Account* left = getAt(i);
+                Account* right = getAt(i + 1);
+
+                if (left != nullptr && right != nullptr && left->getAccountNumber() > right->getAccountNumber()) {
+                    Account* temp = accounts.at(i);
+                    accounts.at(i) = accounts.at(i + 1);
+                    accounts.at(i + 1) = temp;
+                    swapped = true;
+                }
+            }
+
+            // If no swaps were made, the array is already sorted
+            if (!swapped) {
+                break;
+            }
+        }
+        return true;
+    }
+
+    // ALL Accounts need to be sorted for this to work
+    int binarySearch(int targetAccNum) {
+        // Low and Highest are set at the ends
+        int low = 0;
+        int high = getCount() - 1;
+
+
+        while (low <= high) {
+            // Find the middle index and get the account at that index
+            int mid = low + (high - low) / 2;
+            Account* midAccount = getAt(mid);
+
+            int midAccNum = midAccount->getAccountNumber();
+            if (midAccNum == targetAccNum) {
+                return mid;
+            }
+            // If the middle account number is less than the target, we know the target must be in the upper half
+            else if (midAccNum < targetAccNum) {
+                low = mid + 1;
+            }
+            // Else if the middle account number is greater than the target, we know the target must be in the lower half
+            else {
+                high = mid - 1;
+            }
+        }
+        return -1; // If not found
     }
 
     // Simple wrapper so Bank can use the existing recursive print function.
     void printAllAccountsRecursive() const {
-        accounts.printAllRecursive();
+        printAllAccountsRecursiveHelper(0);
     }
-
     // Destructor to clean up memory, deletes all accounts and then the array itself
     ~AccountManager() {
-        for (int i = 0; i < accounts.size(); i++) {
-            delete accounts.getAt(i);
+        for (int i = 0; i < getCount(); i++) {
+            delete accounts.at(i);
         }
     }
 
@@ -604,6 +605,8 @@ public:
             cout << "! Error: Could not store account !\n";
             return;
         }
+
+        manager.sortingAccounts();
         cout << "Account added successfully!\n";
     }
 
@@ -662,16 +665,10 @@ public:
 
 
     int searchAccount(int accountNum) {
-        // Account is searched for, once found it is indexed to be used for the transaction
-        int index = -1;
-        for (int i = 0; i < manager.getCount(); i++) {
-            if (manager.getAt(i)->getAccountNumber() == accountNum) {
-                index = i;
-                break;
-            }
+        if (accountNum >= 10) {
+            return manager.binarySearch(accountNum);
         }
-        // Returns what the actual array index is
-        return index;
+        return manager.sequentialSearch(accountNum);
     }
 
 
@@ -950,18 +947,28 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     CHECK(roundCurrency(42) == 42);
     CHECK(roundCurrency(12.346) == 12.35);
 
-    // Test 17-18: class template usage (store/remove/resizing)
-    DynamicArray<int> values;
-    CHECK(values.add(10) == true);
-    CHECK(values.add(20) == true);
-    CHECK(values.add(30) == true);
-    CHECK(values.size() == 3);
-    CHECK(values[1] == 20);
-    CHECK(values.removeAt(1) == true);
-    CHECK(values.size() == 2);
-    CHECK(values[1] == 30);
-    CHECK_THROWS_AS(values[99], out_of_range);
-    CHECK_THROWS_AS(values.removeAt(99), out_of_range);
+    // Test 17: Sequential Searching for accounts
+    AccountManager searchSortManager;
+    CHECK(searchSortManager.addAccount(new SavingsAccount(30, "A", 100.0, 0.05)) == true);
+    CHECK(searchSortManager.addAccount(new CheckingAccount(10, "B", 200.0, 10.0)) == true);
+    CHECK(searchSortManager.addAccount(new SavingsAccount(20, "C", 300.0, 0.05)) == true);
+
+    // Linear search checks from start to end
+    CHECK(searchSortManager.sequentialSearch(30) == 0);
+    CHECK(searchSortManager.sequentialSearch(10) == 1);
+    CHECK(searchSortManager.sequentialSearch(20) == 2);
+    CHECK(searchSortManager.sequentialSearch(999) == -1);
+
+    // Test 18-19: Bubble Sort and Binary Search
+    CHECK(searchSortManager.sortingAccounts() == true);
+    CHECK(searchSortManager[0]->getAccountNumber() == 10);
+    CHECK(searchSortManager[1]->getAccountNumber() == 20);
+    CHECK(searchSortManager[2]->getAccountNumber() == 30);
+
+    CHECK(searchSortManager.binarySearch(10) == 0);
+    CHECK(searchSortManager.binarySearch(20) == 1);
+    CHECK(searchSortManager.binarySearch(30) == 2);
+    CHECK(searchSortManager.binarySearch(111) == -1);
 }
 #endif
 

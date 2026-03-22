@@ -64,21 +64,8 @@
   </Class>
   <Class Name="AccountManager">
     <Position X="5.75" Y="2.75" Width="1.5" />
-    <Compartments>
-      <Compartment Name="Methods" Collapsed="true" />
-    </Compartments>
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAAAAAAAAAAAQAAAIEAABICAAAAAAAEAAA=</HashCode>
-      <FileName>Week01_BankManager.cpp</FileName>
-    </TypeIdentifier>
-  </Class>
-  <Class Name="DynamicArray&lt;T&gt;">
-    <Position X="5.75" Y="4.25" Width="1.5" />
-    <Compartments>
-      <Compartment Name="Fields" Collapsed="true" />
-    </Compartments>
-    <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAAAAAEDIIgAAAAAAEAAAACAQAAAAACEAA=</HashCode>
+      <HashCode>AAAAAAAAACAAAAAAAAAAAQAAAIEgABICAAAIAAgEAIA=</HashCode>
       <FileName>Week01_BankManager.cpp</FileName>
     </TypeIdentifier>
   </Class>
@@ -86,6 +73,7 @@
     <Position X="10.25" Y="2.25" Width="1.5" />
     <Compartments>
       <Compartment Name="Methods" Collapsed="true" />
+      <Compartment Name="Fields" Collapsed="true" />
     </Compartments>
     <TypeIdentifier>
       <HashCode>AAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAEACA=</HashCode>
