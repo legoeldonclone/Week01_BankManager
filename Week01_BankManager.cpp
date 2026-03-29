@@ -1,7 +1,7 @@
 /*
-* Week 9 Assignment - Searching and Sorting
+* Week 10 Assignment - Linked Lists
 * By: Eldon Salman
-* Date: March 22nd 2026
+* Date: March 29th 2026
 */
 
 // All of the needed libraries
@@ -12,7 +12,6 @@
 #include <string>
 #include <exception>
 #include <stdexcept>
-#include <vector>
 
 #if defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC
@@ -176,10 +175,219 @@ public:
     virtual ~Account() = default;
 };
 
+// Unordered linked list ADT for storing account pointers.
+// We keep this list unordered because accounts are added in user entry order,
+// and sorting (when needed) is handled separately by AccountManager.
+class AccountLinkedList {
+public:
+    struct Node {
+        // The actual account stored in this node.
+        Account* data;
+        // Pointer to the next node in the list.
+        Node* next;
+
+        explicit Node(Account* accountData) : data(accountData), next(nullptr) {
+        }
+    };
+
+private:
+    // First node in the list.
+    Node* head;
+    // Last node in the list (makes back insert O(1)).
+    Node* tail;
+    // Number of nodes currently stored.
+    int count;
+
+    // Internal helper used by get/set/delete to reach a node by index.
+    Node* getNodeAt(int index) const {
+        if (index < 0 || index >= count) {
+            return nullptr;
+        }
+
+        // Walk from head to the requested index.
+        Node* current = head;
+        for (int i = 0; i < index; i++) {
+            current = current->next;
+        }
+        return current;
+    }
+
+public:
+    AccountLinkedList() : head(nullptr), tail(nullptr), count(0) {
+    }
+
+    // Only deletes node wrappers; Account objects are deleted by AccountManager.
+    ~AccountLinkedList() {
+        Node* current = head;
+        while (current != nullptr) {
+            Node* nextNode = current->next;
+            delete current;
+            current = nextNode;
+        }
+    }
+
+    int size() const {
+        return count;
+    }
+
+    // Insert operation.
+    bool insertBack(Account* newAccount) {
+        if (newAccount == nullptr) {
+            return false;
+        }
+
+        Node* newNode = new Node(newAccount);
+        // If list is empty, new node is both head and tail.
+        if (tail == nullptr) {
+            head = newNode;
+            tail = newNode;
+        }
+        else {
+            // Otherwise append after current tail.
+            tail->next = newNode;
+            tail = newNode;
+        }
+
+        count++;
+        return true;
+    }
+
+    // Second insert position for unordered list: add at the front.
+    bool insertFront(Account* newAccount) {
+        if (newAccount == nullptr) {
+            return false;
+        }
+
+        Node* newNode = new Node(newAccount);
+        newNode->next = head;
+        head = newNode;
+
+        if (tail == nullptr) {
+            tail = newNode;
+        }
+
+        count++;
+        return true;
+    }
+
+    // Delete operation.
+    bool deleteAt(int index) {
+        if (index < 0 || index >= count) {
+            return false;
+        }
+
+        Node* nodeToDelete = nullptr;
+        // Special case: removing the first node.
+        if (index == 0) {
+            nodeToDelete = head;
+            head = head->next;
+            if (head == nullptr) {
+                tail = nullptr;
+            }
+        }
+        else {
+            // General case: bypass the node at index.
+            Node* previous = getNodeAt(index - 1);
+            nodeToDelete = previous->next;
+            previous->next = nodeToDelete->next;
+            if (nodeToDelete == tail) {
+                tail = previous;
+            }
+        }
+
+        delete nodeToDelete;
+        count--;
+        return true;
+    }
+
+    // Search operation.
+    int searchByAccountNumber(int accountNum) const {
+        Node* current = head;
+        int index = 0;
+
+        while (current != nullptr) {
+            if (current->data != nullptr && current->data->getAccountNumber() == accountNum) {
+                return index;
+            }
+            current = current->next;
+            index++;
+        }
+
+        return -1;
+    }
+
+    // Read-only access to account pointer at a position.
+    Account* getAt(int index) const {
+        Node* node = getNodeAt(index);
+        if (node == nullptr) {
+            return nullptr;
+        }
+        return node->data;
+    }
+
+    // Used by bubble sort to swap account pointers at two positions.
+    bool setAt(int index, Account* value) {
+        Node* node = getNodeAt(index);
+        if (node == nullptr) {
+            return false;
+        }
+        node->data = value;
+        return true;
+    }
+
+    // Print/Traverse operation.
+    void printTraverse() const {
+        // Visit each node once and print its account.
+        Node* current = head;
+        while (current != nullptr) {
+            if (current->data != nullptr) {
+                current->data->print();
+                cout << endl;
+            }
+            current = current->next;
+        }
+    }
+
+    // Lets iterator read private head pointer for traversal start.
+    friend class AccountListIterator;
+};
+
+// Iterator for AccountLinkedList traversal.
+class AccountListIterator {
+private:
+    // The node currently pointed to during traversal.
+    const AccountLinkedList::Node* current;
+
+public:
+    // Start iterator at the front of the list.
+    explicit AccountListIterator(const AccountLinkedList& list) : current(list.head) {
+    }
+
+    bool isValid() const {
+        return current != nullptr;
+    }
+
+    // Move to the next node.
+    void next() {
+        if (current != nullptr) {
+            current = current->next;
+        }
+    }
+
+    // Access the current node's account.
+    Account* getData() const {
+        if (current == nullptr) {
+            return nullptr;
+        }
+        return current->data;
+    }
+};
+
 // Made to manage the accounts
 class AccountManager {
 private:
-    vector<Account*> accounts;
+    // AccountManager now stores accounts in a linked list ADT.
+    AccountLinkedList accounts;
 
 
     void printAllAccountsRecursiveHelper(int startIndex) const {
@@ -187,8 +395,9 @@ private:
             return;
         }
 
-        if (accounts.at(startIndex) != nullptr) {
-            accounts.at(startIndex)->print();
+        Account* account = accounts.getAt(startIndex);
+        if (account != nullptr) {
+            account->print();
             cout << endl;
         }
 
@@ -208,7 +417,7 @@ public:
     // Operator addition to add an account
     AccountManager& operator+=(Account* newAccount) {
         if (newAccount != nullptr) {
-            this->accounts.push_back(newAccount);
+            this->accounts.insertBack(newAccount);
         }
         return *this;
     }
@@ -220,12 +429,16 @@ public:
         }
         Account* accountToRemove = (*this)[index];
         delete accountToRemove;
-        accounts.erase(accounts.begin() + index);
+        accounts.deleteAt(index);
         return *this;
     }
 
     Account* operator[](int index) const {
-        return accounts.at(index);
+        Account* account = accounts.getAt(index);
+        if (account == nullptr) {
+            throw out_of_range("Account index out of range");
+        }
+        return account;
     }
 
     // Getter for account count
@@ -238,18 +451,24 @@ public:
         if (index < 0 || index >= getCount()) {
             return nullptr;
         }
-        return accounts.at(index);
+        return accounts.getAt(index);
     }
 
     // Sequential search by account number (returns index or -1 if not found)
     int sequentialSearch(int accountNum) const {
-        for (int i = 0; i < getCount(); i++) {
-            Account* account = getAt(i);
+        // Use iterator traversal here so iterator is used in normal program flow.
+        AccountListIterator iterator(accounts);
+        int index = 0;
+
+        while (iterator.isValid()) {
+            Account* account = iterator.getData();
             if (account != nullptr && account->getAccountNumber() == accountNum) {
-                return i;
+                return index;
             }
+            iterator.next();
+            index++;
         }
-        // If not found, return -1
+
         return -1;
     }
 
@@ -273,9 +492,9 @@ public:
                 Account* right = getAt(i + 1);
 
                 if (left != nullptr && right != nullptr && left->getAccountNumber() > right->getAccountNumber()) {
-                    Account* temp = accounts.at(i);
-                    accounts.at(i) = accounts.at(i + 1);
-                    accounts.at(i + 1) = temp;
+                    Account* temp = left;
+                    accounts.setAt(i, right);
+                    accounts.setAt(i + 1, temp);
                     swapped = true;
                 }
             }
@@ -323,7 +542,7 @@ public:
     // Destructor to clean up memory, deletes all accounts and then the array itself
     ~AccountManager() {
         for (int i = 0; i < getCount(); i++) {
-            delete accounts.at(i);
+            delete accounts.getAt(i);
         }
     }
 
@@ -969,6 +1188,23 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     CHECK(searchSortManager.binarySearch(20) == 1);
     CHECK(searchSortManager.binarySearch(30) == 2);
     CHECK(searchSortManager.binarySearch(111) == -1);
+
+    // Test 20: Insert into an empty linked list
+    AccountLinkedList emptyInsertList;
+    SavingsAccount firstInEmpty(901, "Edge", 50.0, 0.05);
+    // Front insert should work even when list starts empty.
+    CHECK(emptyInsertList.insertFront(&firstInEmpty) == true);
+    CHECK(emptyInsertList.size() == 1);
+    CHECK(emptyInsertList.getAt(0) != nullptr);
+    CHECK(emptyInsertList.getAt(0)->getAccountNumber() == 901);
+
+    // Test 21: Delete a node that does not exist
+    CHECK(emptyInsertList.deleteAt(99) == false);
+
+    // Test 22: Traverse an empty linked list
+    AccountLinkedList emptyTraverseList;
+    // Traversing an empty list should do nothing and not throw.
+    CHECK_NOTHROW(emptyTraverseList.printTraverse());
 }
 #endif
 
