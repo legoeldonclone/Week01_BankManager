@@ -1,10 +1,11 @@
 /*
-* Week 10 Assignment - Linked Lists
+* Week 11 Assignment - Linked Lists - Collaboration 
 * By: Eldon Salman
 * Date: March 29th 2026
 */
 
 // All of the needed libraries
+#include <sstream>
 #include <iostream>
 #include <iomanip>
 #include <cmath>
@@ -383,26 +384,106 @@ public:
     }
 };
 
+// ================= STACK CLASS =================
+class AccountStack {
+private:
+    AccountLinkedList list; // reuse existing linked list
+
+public:
+    bool isEmpty() const {
+        return list.size() == 0;
+    }
+
+    void push(Account* account) {
+        list.insertFront(account);
+    }
+
+    void pop() {
+        if (isEmpty())
+            throw runtime_error("Stack underflow");
+        list.deleteAt(0);
+    }
+
+    Account* peek() const {
+        if (isEmpty())
+            throw runtime_error("Stack is empty");
+        return list.getAt(0);
+    }
+};
+
+// ================= QUEUE CLASS =================
+class AccountQueue {
+private:
+    AccountLinkedList list;
+
+public:
+    bool isEmpty() const {
+        return list.size() == 0;
+    }
+
+    void enqueue(Account* account) {
+        list.insertBack(account);
+    }
+
+    void dequeue() {
+        if (isEmpty())
+            throw runtime_error("Queue underflow");
+        list.deleteAt(0);
+    }
+
+    Account* front() const {
+        if (isEmpty())
+            throw runtime_error("Queue is empty");
+        return list.getAt(0);
+    }
+};
+
 // Made to manage the accounts
+// ================= ACCOUNT MANAGER =================
 class AccountManager {
 private:
-    // AccountManager now stores accounts in a linked list ADT.
     AccountLinkedList accounts;
 
+public:
 
-    void printAllAccountsRecursiveHelper(int startIndex) const {
-        if (startIndex >= getCount()) {
-            return;
+    // ===== STACK DEMO FUNCTION =====
+    void processAccountsWithStack() {
+        AccountStack stack;
+
+        for (int i = 0; i < accounts.size(); i++) {
+            stack.push(accounts.getAt(i));
         }
+
+        while (!stack.isEmpty()) {
+            Account* acc = stack.peek();
+            stack.pop();
+            cout << "Processing (stack): "
+                << acc->getMemberName()
+                << endl;
+        }
+    }
+
+    // ===== RECURSIVE PRINT HELPER =====
+    void printAllAccountsRecursiveHelper(int startIndex) const {
+        if (startIndex >= accounts.size())
+            return;
 
         Account* account = accounts.getAt(startIndex);
-        if (account != nullptr) {
+        if (account)
             account->print();
-            cout << endl;
-        }
 
         printAllAccountsRecursiveHelper(startIndex + 1);
     }
+
+    void printAllAccountsRecursive() const {
+        printAllAccountsRecursiveHelper(0);
+    }
+
+    ~AccountManager() {
+        for (int i = 0; i < accounts.size(); i++)
+            delete accounts.getAt(i);
+    }
+
 
 public:
     // Adds an account to the manager, this calls upon OPERATOR+= to add the account, checks for null and returns true if successful
@@ -534,18 +615,6 @@ public:
         }
         return -1; // If not found
     }
-
-    // Simple wrapper so Bank can use the existing recursive print function.
-    void printAllAccountsRecursive() const {
-        printAllAccountsRecursiveHelper(0);
-    }
-    // Destructor to clean up memory, deletes all accounts and then the array itself
-    ~AccountManager() {
-        for (int i = 0; i < getCount(); i++) {
-            delete accounts.getAt(i);
-        }
-    }
-
 };
 
 
@@ -711,6 +780,9 @@ class Bank {
 private:
     // Replaces Account array with an AccountManager object, this is composition as Bank 'has a' AccountManager
     AccountManager manager;
+
+    AccountStack transactionStack; //week 11
+    AccountQueue transactionQueue; //week 11
 
     // All functions are public for Bank Manager usage
 public:
@@ -1050,14 +1122,18 @@ public:
 
     // Deposit directly for testing
     bool deposit(int accountNum, double amount) {
-        int index = searchAccount(accountNum); // Search for the actual account
+        int index = searchAccount(accountNum);
         if (index == -1 || amount <= 0) {
             return false;
         }
-        // Deposit if it's clear
+
         Account* account = manager.getAt(index);
         account->setBalance(account->getBalance() + amount);
         account->recordTransaction(true, amount);
+
+        transactionStack.push(account);      // NEW
+        transactionQueue.enqueue(account);   // NEW
+
         return true;
     }
 
@@ -1073,6 +1149,9 @@ public:
         }
         account->setBalance(account->getBalance() - amount);
         account->recordTransaction(false, amount);
+
+        transactionStack.push(account); //week 11
+        transactionQueue.enqueue(account); //week 11
         return true;
     }
 
@@ -1094,6 +1173,57 @@ public:
 #ifdef _DEBUG
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
+
+TEST_CASE("Stack push and pop") {
+    AccountStack stack;
+    SavingsAccount acc(1, "Test", 100, 0.05);
+
+    stack.push(&acc);
+    CHECK(stack.peek()->getAccountNumber() == 1);
+
+    stack.pop();
+    CHECK(stack.isEmpty());
+
+
+}
+
+TEST_CASE("Stack integration with accounts") {
+    AccountStack stack;
+
+    SavingsAccount a(1, "Alice", 100, 0.05);
+    SavingsAccount b(2, "Bob", 200, 0.05);
+
+    stack.push(&a);
+    stack.push(&b);
+
+    CHECK(stack.peek()->getMemberName() == "Bob");
+
+    stack.pop();
+    CHECK(stack.peek()->getMemberName() == "Alice");
+}
+
+TEST_CASE("Queue enqueue and dequeue") {
+    AccountQueue queue;
+    SavingsAccount acc(2, "Queue", 200, 0.05);
+
+    queue.enqueue(&acc);
+    CHECK(queue.front()->getAccountNumber() == 2);
+
+    queue.dequeue();
+    CHECK(queue.isEmpty());
+}
+
+TEST_CASE("Stack underflow throws") {
+    AccountStack stack;
+    CHECK_THROWS(stack.pop());
+    CHECK_THROWS(stack.peek());
+}
+
+TEST_CASE("Queue underflow throws") {
+    AccountQueue queue;
+    CHECK_THROWS(queue.dequeue());
+    CHECK_THROWS(queue.front());
+}
 
 // TEST CLASS METHODS for inheritance and composition
 TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
