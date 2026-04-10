@@ -2,9 +2,6 @@
 <ClassDiagram MajorVersion="1" MinorVersion="1">
   <Class Name="TransactionHistory">
     <Position X="5.75" Y="0.75" Width="1.5" />
-    <Compartments>
-      <Compartment Name="Methods" Collapsed="true" />
-    </Compartments>
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAAACAQBAQgAAIAAAABAAQQA=</HashCode>
       <FileName>Week01_BankManager.cpp</FileName>
@@ -12,9 +9,6 @@
   </Class>
   <Class Name="Account">
     <Position X="2" Y="0.5" Width="1.5" />
-    <Compartments>
-      <Compartment Name="Methods" Collapsed="true" />
-    </Compartments>
     <NestedTypes>
       <Enum Name="Account::AccountType" Collapsed="true">
         <TypeIdentifier>
@@ -29,9 +23,6 @@
   </Class>
   <Class Name="SavingsAccount">
     <Position X="3.5" Y="3.25" Width="1.5" />
-    <Compartments>
-      <Compartment Name="Methods" Collapsed="true" />
-    </Compartments>
     <TypeIdentifier>
       <HashCode>AAQAAAAAAAAAgAAQAAAAAQAwAAAAAAAJAAAAAAAAAgg=</HashCode>
       <FileName>Week01_BankManager.cpp</FileName>
@@ -39,9 +30,6 @@
   </Class>
   <Class Name="CheckingAccount">
     <Position X="0.5" Y="3.25" Width="1.5" />
-    <Compartments>
-      <Compartment Name="Methods" Collapsed="true" />
-    </Compartments>
     <InheritanceLine Type="Account">
       <InheritanceModifierLabel ManuallyPlaced="true" ManuallySized="true">
         <Position X="-0.002" Y="0.06" Height="0.182" Width="0.5" />
@@ -58,14 +46,14 @@
       <Compartment Name="Fields" Collapsed="true" />
     </Compartments>
     <TypeIdentifier>
-      <HashCode>AAAAAgAUAAEAAAAAAACAAAAEAAABBAIAAAIAAgAAkEA=</HashCode>
+      <HashCode>AAAAAgAUAAEAAAAAAACAAgAEAAABBAIAAAIAAgAA0EA=</HashCode>
       <FileName>Week01_BankManager.cpp</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="AccountManager">
-    <Position X="5.75" Y="2.75" Width="1.5" />
+    <Position X="5.75" Y="4" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAAAAAACAAAAAAAAAAAQAAAIEgABICAAAIAAgEAIA=</HashCode>
+      <HashCode>AAAAAAAAACEAAAAAAAAgCQAAAIEgABICAAAoAAgEAIA=</HashCode>
       <FileName>Week01_BankManager.cpp</FileName>
     </TypeIdentifier>
   </Class>

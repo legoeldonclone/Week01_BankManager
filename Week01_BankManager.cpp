@@ -13,6 +13,7 @@
 #include <string>
 #include <exception>
 #include <stdexcept>
+#include <map>
 
 #if defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC
@@ -443,6 +444,7 @@ public:
 class AccountManager {
 private:
     AccountLinkedList accounts;
+    map<int, Account*> accountMap;
 
 public:
 
@@ -495,10 +497,19 @@ public:
         return true;
     }
 
+    Account* findAccount(int accountNum) const {
+        auto it = accountMap.find(accountNum);
+        if (it == accountMap.end()) {
+            return nullptr;
+        }
+        return it->second;
+    }
+
     // Operator addition to add an account
     AccountManager& operator+=(Account* newAccount) {
         if (newAccount != nullptr) {
             this->accounts.insertBack(newAccount);
+            accountMap[newAccount->getAccountNumber()] = newAccount;
         }
         return *this;
     }
@@ -509,6 +520,7 @@ public:
             throw BankException("Account removal failed: invalid index");
         }
         Account* accountToRemove = (*this)[index];
+        accountMap.erase(accountToRemove->getAccountNumber());
         delete accountToRemove;
         accounts.deleteAt(index);
         return *this;
@@ -533,6 +545,14 @@ public:
             return nullptr;
         }
         return accounts.getAt(index);
+    }
+
+    void printMapAccounts() const {
+        cout << "\n--- Accounts (via map) ---\n";
+        for (const auto& pair : accountMap) {
+            cout << "Key (Acc#): " << pair.first << " -> ";
+            pair.second->print();
+        }
     }
 
     // Sequential search by account number (returns index or -1 if not found)
@@ -824,12 +844,9 @@ public:
                 error = true;
             }
 
-            for (int i = 0; i < manager.getCount(); i++) {
-                // Search for if the account they entered was the same as one of our other accounts
-                if (accNum == manager.getAt(i)->getAccountNumber()) {
-                    error = true;
-                    cout << "! Error: There was a duplicate account number found !\n";
-                }
+            if (!error && manager.findAccount(accNum) != nullptr) {
+                error = true;
+                cout << "! Error: There was a duplicate account number found!\n";
             }
 
             // Your account number may not be 0 or Negative as well
@@ -956,8 +973,9 @@ public:
 
 
     int searchAccount(int accountNum) {
-        if (accountNum >= 10) {
-            return manager.binarySearch(accountNum);
+        Account* acc = manager.findAccount(accountNum);
+        if (acc == nullptr) {
+            return -1;
         }
         return manager.sequentialSearch(accountNum);
     }
@@ -1335,6 +1353,31 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     AccountLinkedList emptyTraverseList;
     // Traversing an empty list should do nothing and not throw.
     CHECK_NOTHROW(emptyTraverseList.printTraverse());
+
+    // Test 23-24: Map insert and lookup
+    AccountManager imapManager;
+    imapManager += new SavingsAccount(100, "Test", 100.0, 0.05);
+
+    Account* acc = imapManager.findAccount(100);
+    CHECK(acc != nullptr);
+    CHECK(acc->getMemberName() == "Test");
+
+    // Test 25: Map lookup non-existent key
+    AccountManager maplManager;
+    CHECK(maplManager.findAccount(999) == nullptr);
+
+    // Test 26: Map delete removes key
+    AccountManager dmapManager;
+    dmapManager += new SavingsAccount(200, "Delete", 200.0, 0.05);
+    dmapManager -= 0;
+    CHECK(dmapManager.findAccount(200) == nullptr);
+
+    // Test 27: Map iteration
+    AccountManager mapManager;
+    mapManager += new SavingsAccount(1, "A", 100, 0.05);
+    mapManager += new SavingsAccount(2, "B", 200, 0.05);
+    // This does print for a test so it makes the debug screen a little ugly whoops sorry mate :P
+    CHECK_NOTHROW(mapManager.printMapAccounts());
 }
 #endif
 
