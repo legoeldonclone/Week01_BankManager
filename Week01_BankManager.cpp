@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <map>
 #include "json.hpp"
+using json = nlohmann::json;
 
 #if defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC
@@ -440,6 +441,162 @@ public:
     }
 };
 
+// Derived class, Savings adds interest which will be manipulated later on to add interest over time
+class SavingsAccount : public Account {
+private:
+    double interestRate;
+    TransactionHistory history;
+
+public:
+    // Constructors
+    SavingsAccount() {
+        interestRate = 0.0;
+    }
+    SavingsAccount(int accNum, const string& name, double bal, double rate) : Account(accNum, name, bal) {
+        interestRate = rate;
+    }
+
+    // Getters
+    double getInterestRate() const {
+        return interestRate;
+    }
+    TransactionHistory& getHistory() {
+        return history;
+    }
+    const TransactionHistory& getHistory() const {
+        return history;
+    }
+
+    // Setters
+    void setInterestRate(double rate) {
+        interestRate = rate;
+    }
+
+    // Override print
+    void print() const override {
+        // Call base print first
+        Account::print();
+        cout << endl;
+        // Add savings-specific info
+        cout << left << setw(20) << "Account Type:"
+            << "Savings" << endl;
+        cout << setw(20) << "Interest Rate:"
+            << fixed << setprecision(2) << interestRate * 100 << "%" << endl;
+        // Add transaction history
+        cout << setw(20) << "Total Transactions:"
+            << history.getTotalTransactions() << endl;
+        cout << setw(20) << "Total Deposited:"
+            << "$" << fixed << setprecision(2) << history.getTotalDeposited() << endl;
+        cout << setw(20) << "Total Withdrawn:"
+            << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
+    }
+
+    void toStream(ostream& os) const override {
+        os << "Savings #" << accountNumber
+            << " | " << memberName
+            << " | Balance: $" << fixed << setprecision(2) << balance
+            << " | Rate: " << fixed << setprecision(2) << interestRate * 100 << "%";
+    }
+
+    // To be used later on, no utilization now but more in the future
+    double calculateInterest() const {
+        return balance * interestRate;
+    }
+
+    // Record transaction in history
+    void recordTransaction(bool isDeposit, double amount) override {
+        if (isDeposit)
+            history.recordDeposit(amount);
+        else
+            history.recordWithdrawal(amount);
+    }
+
+
+    bool operator==(const SavingsAccount& other) const {
+        return memberName == other.memberName;
+    }
+};
+
+
+
+
+
+
+// Checking account Derived class, adds a monthly fee that will be manipulated later on
+class CheckingAccount : public Account {
+private:
+    double monthlyFee;
+    TransactionHistory history;
+
+public:
+    // Constructors
+    CheckingAccount() {
+        monthlyFee = 0.0;
+    }
+    CheckingAccount(int accNum, const string& name, double bal, double fee) : Account(accNum, name, bal) {
+        monthlyFee = fee;
+    }
+
+    // Getters
+    double getMonthlyFee() const {
+        return monthlyFee;
+    }
+    TransactionHistory& getHistory() {
+        return history;
+    }
+    const TransactionHistory& getHistory() const {
+        return history;
+    }
+
+    // Setters
+    void setMonthlyFee(double fee) {
+        monthlyFee = fee;
+    }
+
+    // Override print
+    void print() const override {
+        // Call base print first
+        Account::print();
+        cout << endl;
+        // Add checking-specific info
+        cout << left << setw(20) << "Account Type:"
+            << "Checking" << endl;
+        cout << setw(20) << "Monthly Fee:"
+            << "$" << fixed << setprecision(2) << monthlyFee << endl;
+        // Add transaction history
+        cout << setw(20) << "Total Transactions:"
+            << history.getTotalTransactions() << endl;
+        cout << setw(20) << "Total Deposited:"
+            << "$" << fixed << setprecision(2) << history.getTotalDeposited() << endl;
+        cout << setw(20) << "Total Withdrawn:"
+            << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
+    }
+
+    void toStream(ostream& os) const override {
+        os << "Checking #" << accountNumber
+            << " | " << memberName
+            << " | Balance: $" << fixed << setprecision(2) << balance
+            << " | Fee: $" << fixed << setprecision(2) << monthlyFee;
+    }
+
+    // Helper method
+    void applyMonthlyFee() {
+        balance -= monthlyFee;
+    }
+
+    // Record transaction in history
+    void recordTransaction(bool isDeposit, double amount) override {
+        if (isDeposit)
+            history.recordDeposit(amount);
+        else
+            history.recordWithdrawal(amount);
+    }
+};
+
+
+
+
+
 // Made to manage the accounts
 // ================= ACCOUNT MANAGER =================
 class AccountManager {
@@ -636,162 +793,85 @@ public:
         }
         return -1; // If not found
     }
-};
+    // Loads account data from JSON and inserts it into the existing
+// linked list and map through addAccount/operator+=.
+// This makes JSON interact meaningfully with the current program.
+    bool loadAccountsFromJson(const string& filename) {
+        ifstream inFile(filename);
+        if (!inFile) {
+            throw runtime_error("JSON file not found: " + filename);
+        }
 
+        json data;
+        inFile >> data;
 
-// Derived class, Savings adds interest which will be manipulated later on to add interest over time
-class SavingsAccount : public Account {
-private:
-    double interestRate;
-    TransactionHistory history;
+        if (!data.is_array()) {
+            throw runtime_error("JSON root must be an array.");
+        }
 
-public:
-    // Constructors
-    SavingsAccount() {
-        interestRate = 0.0;
-    }
-    SavingsAccount(int accNum, const string& name, double bal, double rate) : Account(accNum, name, bal) {
-        interestRate = rate;
-    }
+        for (const auto& item : data) {
+            if (!item.contains("accountNumber") ||
+                !item.contains("memberName") ||
+                !item.contains("balance") ||
+                !item.contains("accountType")) {
+                throw runtime_error("JSON object is missing required fields.");
+            }
 
-    // Getters
-    double getInterestRate() const {
-        return interestRate;
-    }
-    TransactionHistory& getHistory() {
-        return history;
-    }
-    const TransactionHistory& getHistory() const {
-        return history;
-    }
+            int accountNumber = item.at("accountNumber").get<int>();
+            string memberName = item.at("memberName").get<string>();
+            double balance = item.at("balance").get<double>();
+            string accountType = item.at("accountType").get<string>();
 
-    // Setters
-    void setInterestRate(double rate) {
-        interestRate = rate;
-    }
+            // Prevent duplicate accounts from being loaded.
+            if (findAccount(accountNumber) != nullptr) {
+                continue;
+            }
 
-    // Override print
-    void print() const override {
-        // Call base print first
-        Account::print();
-        cout << endl;
-        // Add savings-specific info
-        cout << left << setw(20) << "Account Type:"
-            << "Savings" << endl;
-        cout << setw(20) << "Interest Rate:"
-            << fixed << setprecision(2) << interestRate * 100 << "%" << endl;
-        // Add transaction history
-        cout << setw(20) << "Total Transactions:"
-            << history.getTotalTransactions() << endl;
-        cout << setw(20) << "Total Deposited:"
-            << "$" << fixed << setprecision(2) << history.getTotalDeposited() << endl;
-        cout << setw(20) << "Total Withdrawn:"
-            << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
-    }
+            Account* newAccount = nullptr;
 
-    void toStream(ostream& os) const override {
-        os << "Savings #" << accountNumber
-            << " | " << memberName
-            << " | Balance: $" << fixed << setprecision(2) << balance
-            << " | Rate: " << fixed << setprecision(2) << interestRate * 100 << "%";
-    }
+            if (accountType == "Savings") {
+                double interestRate = 0.05;
+                if (item.contains("interestRate")) {
+                    interestRate = item.at("interestRate").get<double>();
+                }
 
-    // To be used later on, no utilization now but more in the future
-    double calculateInterest() const {
-        return balance * interestRate;
-    }
+                newAccount = new SavingsAccount(
+                    accountNumber,
+                    memberName,
+                    balance,
+                    interestRate
+                );
+            }
+            else if (accountType == "Checking") {
+                double monthlyFee = 10.0;
+                if (item.contains("monthlyFee")) {
+                    monthlyFee = item.at("monthlyFee").get<double>();
+                }
 
-    // Record transaction in history
-    void recordTransaction(bool isDeposit, double amount) override {
-        if (isDeposit)
-            history.recordDeposit(amount);
-        else
-            history.recordWithdrawal(amount);
-    }
+                newAccount = new CheckingAccount(
+                    accountNumber,
+                    memberName,
+                    balance,
+                    monthlyFee
+                );
+            }
+            else {
+                throw runtime_error("Unknown accountType in JSON: " + accountType);
+            }
 
+            addAccount(newAccount);
+        }
 
-    bool operator==(const SavingsAccount& other) const {
-        return memberName == other.memberName;
-    }
-};
-
-
-
-
-
-
-// Checking account Derived class, adds a monthly fee that will be manipulated later on
-class CheckingAccount : public Account {
-private:
-    double monthlyFee;
-    TransactionHistory history;
-
-public:
-    // Constructors
-    CheckingAccount() {
-        monthlyFee = 0.0;
-    }
-    CheckingAccount(int accNum, const string& name, double bal, double fee) : Account(accNum, name, bal) {
-        monthlyFee = fee;
+        sortingAccounts();
+        return true;
     }
 
-    // Getters
-    double getMonthlyFee() const {
-        return monthlyFee;
-    }
-    TransactionHistory& getHistory() {
-        return history;
-    }
-    const TransactionHistory& getHistory() const {
-        return history;
-    }
-
-    // Setters
-    void setMonthlyFee(double fee) {
-        monthlyFee = fee;
-    }
-
-    // Override print
-    void print() const override {
-        // Call base print first
-        Account::print();
-        cout << endl;
-        // Add checking-specific info
-        cout << left << setw(20) << "Account Type:"
-            << "Checking" << endl;
-        cout << setw(20) << "Monthly Fee:"
-            << "$" << fixed << setprecision(2) << monthlyFee << endl;
-        // Add transaction history
-        cout << setw(20) << "Total Transactions:"
-            << history.getTotalTransactions() << endl;
-        cout << setw(20) << "Total Deposited:"
-            << "$" << fixed << setprecision(2) << history.getTotalDeposited() << endl;
-        cout << setw(20) << "Total Withdrawn:"
-            << "$" << fixed << setprecision(2) << history.getTotalWithdrawn() << endl;
-    }
-
-    void toStream(ostream& os) const override {
-        os << "Checking #" << accountNumber
-            << " | " << memberName
-            << " | Balance: $" << fixed << setprecision(2) << balance
-            << " | Fee: $" << fixed << setprecision(2) << monthlyFee;
-    }
-
-    // Helper method
-    void applyMonthlyFee() {
-        balance -= monthlyFee;
-    }
-
-    // Record transaction in history
-    void recordTransaction(bool isDeposit, double amount) override {
-        if (isDeposit)
-            history.recordDeposit(amount);
-        else
-            history.recordWithdrawal(amount);
+    void clearAllAccounts() {
+        while (getCount() > 0) {
+            *this -= 0;
+        }
     }
 };
-
-
 
 
 
@@ -821,7 +901,27 @@ public:
         cout << "6. Exit\n";
         cout << "Choose an option: ";
     }
-
+    // JSON account data is loaded from disk at runtime and converted into
+    // SavingsAccount / CheckingAccount objects. Those objects are then added
+    // into the existing AccountManager, which stores them in the linked list
+    // and the map. This makes JSON data part of the program's real workflow
+    // instead of just printing raw JSON text.
+    bool loadAccountsFromJsonFile(const string& filename) {
+        try {
+            return manager.loadAccountsFromJson(filename);
+        }
+        catch (const json::parse_error& e) {
+            cout << "JSON parse error: " << e.what() << endl;
+            return false;
+        }
+        catch (const exception& e) {
+            cout << "Error loading JSON: " << e.what() << endl;
+            return false;
+        }
+    }
+    Account* getAccountByNumber(int accountNum) const {
+        return manager.findAccount(accountNum);
+    }
     // We're just adding a new account to the list, the maximum being 999 Accounts
     void addAccount() {
         // Initializes holders and Error which will be utilized to stop bad inputs
@@ -1380,6 +1480,71 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
     // This does print for a test so it makes the debug screen a little ugly whoops sorry mate :P
     CHECK_NOTHROW(mapManager.printMapAccounts());
 }
+    //Test 28
+    TEST_CASE("JSON load adds accounts into existing manager structures") {
+        ofstream out("test_accounts.json");
+        out << R"([
+        { "accountNumber": 501, "memberName": "Json A", "balance": 100.0, "accountType": "Savings", "interestRate": 0.05 },
+        { "accountNumber": 502, "memberName": "Json B", "balance": 200.0, "accountType": "Checking", "monthlyFee": 8.0 },
+        { "accountNumber": 503, "memberName": "Json C", "balance": 300.0, "accountType": "Savings", "interestRate": 0.04 },
+        { "accountNumber": 504, "memberName": "Json D", "balance": 400.0, "accountType": "Checking", "monthlyFee": 12.0 },
+        { "accountNumber": 505, "memberName": "Json E", "balance": 500.0, "accountType": "Savings", "interestRate": 0.03 }
+    ])";
+        out.close();
+
+        Bank b;
+        CHECK(b.loadAccountsFromJsonFile("test_accounts.json") == true);
+        CHECK(b.getAccountCount() == 5);
+        CHECK(b.searchAccount(501) != -1);
+        CHECK(b.searchAccount(505) != -1);
+
+        Account* loaded = b.getAccountByNumber(502);
+        CHECK(loaded != nullptr);
+        CHECK(loaded->getMemberName() == "Json B");
+
+        remove("test_accounts.json");
+    }
+    TEST_CASE("JSON load handles missing file") {
+        Bank b;
+        CHECK(b.loadAccountsFromJsonFile("does_not_exist.json") == false);
+    }
+    TEST_CASE("JSON load handles malformed JSON") {
+        ofstream out("bad_accounts.json");
+        out << R"([
+        { "accountNumber": 601, "memberName": "Broken", "balance": 100.0, "accountType": "Savings" },
+        { bad json here }
+    ])";
+        out.close();
+
+        Bank b;
+        CHECK(b.loadAccountsFromJsonFile("bad_accounts.json") == false);
+
+        remove("bad_accounts.json");
+    }
+    TEST_CASE("JSON load ignores duplicate account numbers") {
+        ofstream out("dup_accounts.json");
+        out << R"([
+        { "accountNumber": 701, "memberName": "First",  "balance": 100.0, "accountType": "Savings",  "interestRate": 0.05 },
+        { "accountNumber": 701, "memberName": "Second", "balance": 200.0, "accountType": "Checking", "monthlyFee": 10.0 },
+        { "accountNumber": 702, "memberName": "Third",  "balance": 300.0, "accountType": "Savings",  "interestRate": 0.04 },
+        { "accountNumber": 703, "memberName": "Fourth", "balance": 400.0, "accountType": "Checking", "monthlyFee": 11.0 },
+        { "accountNumber": 704, "memberName": "Fifth",  "balance": 500.0, "accountType": "Savings",  "interestRate": 0.03 }
+    ])";
+        out.close();
+
+        Bank b;
+        CHECK(b.loadAccountsFromJsonFile("dup_accounts.json") == true);
+        CHECK(b.getAccountCount() == 4);
+        CHECK(b.searchAccount(701) != -1);
+        CHECK(b.searchAccount(702) != -1);
+        CHECK(b.searchAccount(703) != -1);
+        CHECK(b.searchAccount(704) != -1);
+
+        remove("dup_accounts.json");
+    
+    
+
+}
 #endif
 
 
@@ -1394,6 +1559,7 @@ int main()
     Bank bankManager;
     double balance;
 
+    bankManager.loadAccountsFromJsonFile("accounts.json");
     while (choice != 6) {
         bankManager.displayMenu();
         cin >> choice;
