@@ -14,6 +14,7 @@
 #include <exception>
 #include <stdexcept>
 #include <map>
+#include "json.hpp"
 
 #if defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC

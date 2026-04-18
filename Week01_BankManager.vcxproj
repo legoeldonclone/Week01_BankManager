@@ -126,6 +126,7 @@
     <ClCompile Include="Week01_BankManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\Downloads\json.hpp" />
     <ClInclude Include="doctest.h" />
   </ItemGroup>
   <ItemGroup>
