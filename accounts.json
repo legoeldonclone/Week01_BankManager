@@ -1,0 +1,78 @@
+    // Loads account data from JSON and inserts it into the existing
+    // linked list and map through addAccount/operator+=.
+    // This makes JSON interact meaningfully with the current program.
+    bool loadAccountsFromJson(const string& filename) {
+        ifstream inFile(filename);
+        if (!inFile) {
+            throw runtime_error("JSON file not found: " + filename);
+        }
+
+        json data;
+        inFile >> data;
+
+        if (!data.is_array()) {
+            throw runtime_error("JSON root must be an array.");
+        }
+
+        for (const auto& item : data) {
+            if (!item.contains("accountNumber") ||
+                !item.contains("memberName") ||
+                !item.contains("balance") ||
+                !item.contains("accountType")) {
+                throw runtime_error("JSON object is missing required fields.");
+            }
+
+            int accountNumber = item.at("accountNumber").get<int>();
+            string memberName = item.at("memberName").get<string>();
+            double balance = item.at("balance").get<double>();
+            string accountType = item.at("accountType").get<string>();
+
+            // Prevent duplicate accounts from being loaded.
+            if (findAccount(accountNumber) != nullptr) {
+                continue;
+            }
+
+            Account* newAccount = nullptr;
+
+            if (accountType == "Savings") {
+                double interestRate = 0.05;
+                if (item.contains("interestRate")) {
+                    interestRate = item.at("interestRate").get<double>();
+                }
+
+                newAccount = new SavingsAccount(
+                    accountNumber,
+                    memberName,
+                    balance,
+                    interestRate
+                );
+            }
+            else if (accountType == "Checking") {
+                double monthlyFee = 10.0;
+                if (item.contains("monthlyFee")) {
+                    monthlyFee = item.at("monthlyFee").get<double>();
+                }
+
+                newAccount = new CheckingAccount(
+                    accountNumber,
+                    memberName,
+                    balance,
+                    monthlyFee
+                );
+            }
+            else {
+                throw runtime_error("Unknown accountType in JSON: " + accountType);
+            }
+
+            addAccount(newAccount);
+        }
+
+        sortingAccounts();
+        return true;
+    }
+
+    void clearAllAccounts() {
+        while (getCount() > 0) {
+            *this -= 0;
+        }
+    }
