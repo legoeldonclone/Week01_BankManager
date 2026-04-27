@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <map>
 #include "json.hpp"
+#include "HttpClient.h"
 using json = nlohmann::json;
 
 #if defined(_DEBUG)
@@ -873,7 +874,36 @@ public:
     }
 };
 
+// Holds one currency record fetched from the REST API.
+struct CurrencyData {
+    string code;
+    string name;
+    string symbol;
+    double rate_usd;
+};
 
+// Derived from HttpClient. Overrides StartOfData(), Data(), and EndOfData()
+// to accumulate the full HTTP response body into a std::string member.
+// GetResponse() returns that string after the request completes.
+class CurrencyClient : public HttpClient {
+    string response;
+protected:
+    // Clear the buffer before the first data chunk arrives.
+    void StartOfData() override {
+        response.clear();
+    }
+    // Append each raw chunk from the socket to the buffer.
+    void Data(const char* data, const unsigned int size) override {
+        response.append(data, size);
+    }
+    // All data has arrived — nothing extra needed.
+    void EndOfData() override {}
+public:
+    // Returns the fully accumulated HTTP response body.
+    string GetResponse() const {
+        return response;
+    }
+};
 
 
 // Class Bank encapsulates the actual functions of the program
@@ -884,6 +914,11 @@ private:
 
     AccountStack transactionStack; //week 11
     AccountQueue transactionQueue; //week 11
+
+    // Stores currency exchange rates fetched from the REST API.
+    // Key = currency code (e.g. "USD"), Value = CurrencyData struct.
+    // This connects API data into the Bank's existing map-based structure.
+    map<string, CurrencyData> currencyRates;
 
     // All functions are public for Bank Manager usage
 public:
@@ -898,7 +933,10 @@ public:
         cout << "3. Deposit or Withdraw\n";
         cout << "4. Save report\n";
         cout << "5. Delete account\n";
-        cout << "6. Exit\n";
+        cout << "6. View currency rates\n";
+        cout << "7. Currency conversion\n";
+        cout << "8. Add/update currency\n";
+        cout << "9. Exit\n";
         cout << "Choose an option: ";
     }
     // JSON account data is loaded from disk at runtime and converted into
@@ -1284,6 +1322,129 @@ public:
         }
         return false;
     }
+
+    // ===== REST API — CURRENCY =====
+
+    // Connects to api.macomb.io and GETs the full currency list (no query params).
+    // Parses the "currencies" array from the JSON response and loads each entry
+    // into the currencyRates map, which is an existing Bank data structure.
+    bool loadCurrencyRates() {
+        CurrencyClient client;
+        if (!client.Connect("api.macomb.io", INTERNET_DEFAULT_HTTP_PORT)) {
+            cout << "Error: Could not connect to currency API.\n";
+            return false;
+        }
+        client.Get("/currency");
+
+        try {
+            json j = json::parse(client.GetResponse());
+            // API returns { "count": N, "currencies": [ { "code", "name", "symbol", "rate_usd" }, ... ] }
+            // API data is loaded into the currencyRates map here,
+            // connecting it to the Bank's existing data structures.
+            for (const auto& item : j.at("currencies")) {
+                CurrencyData c;
+                c.code     = item.at("code").get<string>();
+                c.name     = item.at("name").get<string>();
+                c.symbol   = item.at("symbol").get<string>();
+                c.rate_usd = item.at("rate_usd").get<double>();
+                currencyRates[c.code] = c;
+            }
+        }
+        catch (const json::exception& e) {
+            cout << "JSON parse error (GET currency list): " << e.what() << "\n";
+            return false;
+        }
+        return true;
+    }
+
+    // GETs a live currency conversion using the documented query params:
+    // from, to, and amount. Parses the "conversion" object and displays
+    // the result — demonstrates Get() with at least one query parameter.
+    bool showConversion(const string& from, const string& to, double amount) {
+        CurrencyClient client;
+        if (!client.Connect("api.macomb.io", INTERNET_DEFAULT_HTTP_PORT)) {
+            cout << "Error: Could not connect to currency API.\n";
+            return false;
+        }
+        // Use documented query params: from, to, amount
+        client.Get("/currency", { {"from", from}, {"to", to}, {"amount", to_string(static_cast<int>(amount))} });
+
+        try {
+            // Response: { "conversion": { "from", "to", "amount", "result", "rate", ... } }
+            json j = json::parse(client.GetResponse());
+            const auto& conv = j.at("conversion");
+            cout << "\n--- Currency Conversion ---\n";
+            cout << fixed << setprecision(2)
+                 << conv.at("amount").get<double>() << " "
+                 << conv.at("from").get<string>() << " = "
+                 << conv.at("result").get<double>() << " "
+                 << conv.at("to").get<string>()
+                 << "  (rate: " << conv.at("rate").get<double>() << ")\n";
+        }
+        catch (const json::exception& e) {
+            cout << "JSON parse error (GET conversion): " << e.what() << "\n";
+            return false;
+        }
+        return true;
+    }
+
+    // Displays all currency rates loaded into the currencyRates map.
+    void displayCurrencyRates() const {
+        if (currencyRates.empty()) {
+            cout << "No currency rates loaded.\n";
+            return;
+        }
+        cout << "\n==================================================\n";
+        cout << setw(36) << "Live Currency Rates (vs USD)\n";
+        cout << "==================================================\n";
+        cout << left
+             << setw(8)  << "Code"
+             << setw(25) << "Currency Name"
+             << setw(8)  << "Symbol"
+             << "Rate (USD)\n";
+        cout << setfill('-') << setw(54) << "-" << "\n";
+        cout << setfill(' ');
+        for (const auto& pair : currencyRates) {
+            const CurrencyData& c = pair.second;
+            cout << left
+                 << setw(8)  << c.code
+                 << setw(25) << c.name
+                 << setw(8)  << c.symbol
+                 << fixed << setprecision(4) << c.rate_usd << "\n";
+        }
+        cout << defaultfloat << setprecision(6);
+    }
+
+    // Builds a JSON body using nlohmann/json and POSTs a new currency entry.
+    // Parses the response to display the server message and accepted code.
+    // POST does not return a numeric ID; the currency code serves as the identifier.
+    bool postNewCurrency(const string& code, const string& name,
+                         const string& symbol, double rate) {
+        // Build the JSON request body with nlohmann/json
+        json body;
+        body["code"]     = code;
+        body["name"]     = name;
+        body["symbol"]   = symbol;
+        body["rate_usd"] = rate;
+
+        CurrencyClient client;
+        if (!client.Connect("api.macomb.io", INTERNET_DEFAULT_HTTP_PORT)) {
+            cout << "Error: Could not connect to currency API.\n";
+            return false;
+        }
+        client.Post("/currency", body.dump());
+
+        try {
+            json resp = json::parse(client.GetResponse());
+            cout << resp.at("message").get<string>() << "\n";
+            cout << "Currency accepted: " << resp.at("currency").at("code").get<string>() << "\n";
+        }
+        catch (const json::exception& e) {
+            cout << "JSON parse error (POST): " << e.what() << "\n";
+            return false;
+        }
+        return true;
+    }
 };
 
 
@@ -1541,10 +1702,77 @@ TEST_CASE("Testing Week 1 to 4 - Inheritance and Composition") {
         CHECK(b.searchAccount(704) != -1);
 
         remove("dup_accounts.json");
-    
-    
+    }
 
+// ----- Week 14: REST API — JSON parsing doctests (no live API calls) -----
+
+TEST_CASE("Currency GET response loads into map") {
+    // Fake GET response matching real API shape — no live network call
+    string fakeGet = R"({
+        "count": 2,
+        "currencies": [
+            {"code":"USD","name":"US Dollar","symbol":"$","rate_usd":1.0},
+            {"code":"EUR","name":"Euro","symbol":"EUR","rate_usd":0.92}
+        ]
+    })";
+
+    map<string, CurrencyData> rates;
+    // Same parsing logic used in Bank::loadCurrencyRates()
+    CHECK_NOTHROW(
+        [&]() {
+            json j = json::parse(fakeGet);
+            for (const auto& item : j.at("currencies")) {
+                CurrencyData c;
+                c.code     = item.at("code").get<string>();
+                c.name     = item.at("name").get<string>();
+                c.symbol   = item.at("symbol").get<string>();
+                c.rate_usd = item.at("rate_usd").get<double>();
+                rates[c.code] = c;
+            }
+        }()
+    );
+    CHECK(rates.size() == 2);
+    CHECK(rates.count("USD") == 1);
+    CHECK(rates["USD"].name == "US Dollar");
+    CHECK(rates["EUR"].rate_usd == doctest::Approx(0.92));
 }
+
+TEST_CASE("Currency GET conversion response parses correctly") {
+    // Fake response matching GET /currency?from=USD&to=EUR&amount=100
+    string fakeConv = R"({
+        "conversion": {
+            "from":"USD","to":"EUR","amount":100,
+            "result":92,"rate":0.92,
+            "from_symbol":"$","to_symbol":"EUR"
+        }
+    })";
+
+    json j = json::parse(fakeConv);
+    const auto& conv = j.at("conversion");
+    CHECK(conv.at("from").get<string>() == "USD");
+    CHECK(conv.at("to").get<string>() == "EUR");
+    CHECK(conv.at("result").get<double>() == doctest::Approx(92.0));
+    CHECK(conv.at("rate").get<double>() == doctest::Approx(0.92));
+}
+
+TEST_CASE("Currency POST response parses message and code") {
+    // Fake POST response — no live network call
+    string fakePost = R"({
+        "message": "currency added successfully",
+        "currency": {"code":"BTC","name":"Bitcoin","symbol":"BTC","rate_usd":60000.0}
+    })";
+
+    json resp = json::parse(fakePost);
+    CHECK(resp.at("message").get<string>() == "currency added successfully");
+    CHECK(resp.at("currency").at("code").get<string>() == "BTC");
+    CHECK(resp.at("currency").at("rate_usd").get<double>() == doctest::Approx(60000.0));
+}
+
+TEST_CASE("Invalid currency JSON throws json::exception") {
+    string bad = "not { valid json at all";
+    CHECK_THROWS_AS(json::parse(bad), json::parse_error);
+}
+
 #endif
 
 
@@ -1560,7 +1788,7 @@ int main()
     double balance;
 
     bankManager.loadAccountsFromJsonFile("accounts.json");
-    while (choice != 6) {
+    while (choice != 9) {
         bankManager.displayMenu();
         cin >> choice;
 
@@ -1636,7 +1864,38 @@ int main()
             }
             break;
         case 6:
-            // Exits the program, this is to show the user that they can exit when they want and that the program doesn't crash when they do
+            // Fetch currency list from the API and display it from the currencyRates map
+            bankManager.loadCurrencyRates();
+            bankManager.displayCurrencyRates();
+            break;
+        case 7:
+            // GET /currency with documented query params (from, to, amount) — live conversion
+            bankManager.showConversion("USD", "EUR", 100);
+            break;
+        case 8:
+        {
+            // POST a new currency entry; build the JSON body with nlohmann/json
+            string code, name, symbol;
+            double rate;
+            cout << "Enter currency code (e.g. BTC): ";
+            cin >> code;
+            cout << "Enter currency name: ";
+            cin.ignore(10000, '\n');
+            getline(cin, name);
+            cout << "Enter symbol: ";
+            cin >> symbol;
+            cout << "Enter rate vs USD: ";
+            cin >> rate;
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "! Error: Invalid rate value !\n";
+                break;
+            }
+            bankManager.postNewCurrency(code, name, symbol, rate);
+            break;
+        }
+        case 9:
             cout << "Exiting program...\n";
             break;
         default:
