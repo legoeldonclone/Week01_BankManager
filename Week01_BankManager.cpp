@@ -1,8 +1,11 @@
 /*
-* Week 11 Assignment - Linked Lists - Collaboration 
+* Week 11 Assignment - Linked Lists - Collaboration
 * By: Eldon Salman
 * Date: March 29th 2026
 */
+
+// Prevent Windows.h from defining min/max macros that clash with std::
+#define NOMINMAX
 
 // All of the needed libraries
 #include <sstream>
